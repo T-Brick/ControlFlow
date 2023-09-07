@@ -159,14 +159,6 @@ def get_new_frontier
     exact List.filter_preserve_in p fs f |>.mpr h₁ |>.right |> of_decide_eq_true
   have fs_filter_pres
       : (f : Frontier g visited s)
-      → f ∈ fs_filter
-      → f ∈ fs := by
-    intro f h₁
-    let p : Frontier g visited s → Prop :=
-      fun f' => ¬((Visited.toList visited').elem f'.cur)
-    exact List.filter_preserve_in p fs f |>.mpr h₁ |>.left
-  have fs_filter_pres'
-      : (f : Frontier g visited s)
       → f ∈ fs
       → ¬(Visited.toList visited' |>.elem f.cur)
       → f ∈ fs_filter := by
@@ -203,11 +195,11 @@ def get_new_frontier
       rw [←h₃.right] at h₂
       rw [←h₃.right]
       simp
-      apply Exists.intro (Subtype.mk f' (fs_filter_pres' f' h₃.left h₂))
+      apply Exists.intro (Subtype.mk f' (fs_filter_pres f' h₃.left h₂))
       simp
     )
 
-  let frontier' := new_frontier ++ new_fs
+  let frontier' := new_fs ++ new_frontier
 
   have frontier'_pres_fs
       : (u : α)
@@ -216,7 +208,7 @@ def get_new_frontier
       → u ∈ Frontier.toList frontier' := by
     intro u h₁ h₂
     rw [Frontier.toList_mem_append]
-    apply Or.intro_right
+    apply Or.intro_left
     apply Exists.elim (Frontier.in_list h₁) (fun f h₃ => by
       rw [←h₃.right]
       rw [←h₃.right] at h₂
@@ -229,21 +221,21 @@ def get_new_frontier
       → u ∈ Frontier.toList frontier' := by
     intro u h₁ h₂
     simp [Frontier.toList_mem_append]
-    apply Or.intro_left
+    apply Or.intro_right
     apply Exists.intro (Subtype.mk u (new_frontier_nodes_filter_pres' u h₁ h₂))
     simp
 
   ⟨frontier', frontier'_pres_fs, frontier'_pres_new_frontier_nodes⟩
 
-inductive FindPathResult (g : Graph α) (s t : α) where
-| found     : (p : List α) → (g |= p : s → t) → FindPathResult g s t
+inductive Result (g : Graph α) (s t : α) where
+| found     : (p : List α) → (g |= p : s → t) → Result g s t
 | not_found : (visited : List (Visited g s))
             → (∀ u ∈ Visited.toList visited, ∀ v ∈ Digraph.succ g u,
                 v ∈ Visited.toList visited)
             → t ∉ Visited.toList visited
-            → FindPathResult g s t
+            → Result g s t
 
-def find_path (g : Graph α) (s t : α) : FindPathResult g s t :=
+def find_path (g : Graph α) (s t : α) : Result g s t :=
   explore []
     (Digraph.succ g s |>.mapMember (fun v h =>
       ⟨v, [], Path.succ h, by simp, by intro h₁; cases h₁⟩
@@ -258,7 +250,7 @@ where explore
                       v ∈ Frontier.toList frontier ∨ v ∈ Visited.toList visited)
     (t_not_found : t ∉ Visited.toList visited)
     (vlen : visited.length < (Digraph.toVertices g).length + 1)
-    : FindPathResult g s t :=
+    : Result g s t :=
   match frontier with
   | [] =>
     .not_found visited
