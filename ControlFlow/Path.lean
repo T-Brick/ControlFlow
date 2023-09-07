@@ -17,7 +17,7 @@ inductive Path (g : Graph α) : α → α → List α → Prop where
 namespace Path
 open Digraph
 
-notation:50 g:51 " |= " p:51 " : " s:51 " → " t:51 => Path g s t p
+notation:50 g:51 " |= " p:51 " : " s:51 " -> " t:51 => Path g s t p
 
 def merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     (path₁ : Path g u v ps₁)
@@ -36,11 +36,80 @@ def merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
       . exact new_disjoint.left h₄
     )
 
+theorem out_edges {g : Graph α} {u v w : α}
+    (path₁ : g |= ps : u -> v)
+    (h₁ : ⟨v, w⟩ ∈ out_edges g v)
+    (h₂ : w ∉ ps)
+    : g |= (w::ps) : u -> w := by
+  have path₂ := Path.edge (Digraph.out_edges_has_edge g v w |>.mp h₁)
+  exact Path.merge path₁ path₂ (by simp [*])
+
+theorem in_edges {g : Graph α} {u v w : α}
+    (path₂ : g |= ps : v -> w)
+    (h₁ : ⟨u, v⟩ ∈ in_edges g v)
+    (h₂ : v ∉ ps)
+    : g |= (ps ++ [v]) : u -> w := by
+  have path₁ := Path.edge (Digraph.in_edges_has_edge g u v |>.mp h₁)
+  exact Path.merge path₁ path₂ (by simp [*])
+
+@[simp] theorem succ {g : Graph α} {u v : α}
+    (h : v ∈ succ g u) : g |= [v] : u -> v :=
+  Path.edge (succ_edge_in_graph g u v h)
+
+@[simp] theorem pred {g : Graph α} {u v : α}
+    (h : u ∈ pred g v) : g |= [v] : u -> v :=
+  Path.edge (pred_edge_in_graph g u v h)
+
+theorem succ_merge {g : Graph α} {u v w : α}
+    (path₁ : g |= ps : u -> v)
+    (h₁ : w ∈ Digraph.succ g v)
+    (h₂ : w ∉ ps)
+    : g |= (w::ps) : u -> w := by
+  exact Path.out_edges path₁ (succ_has_edge g v w |>.mp h₁) h₂
+
+theorem pred_merge {g : Graph α} {u v w : α}
+    (path₂ : g |= ps : v -> w)
+    (h₁ : u ∈ Digraph.pred g v)
+    (h₂ : v ∉ ps)
+    : g |= (ps ++ [v]) : u -> w := by
+  exact Path.in_edges path₂ (pred_has_edge g u v |>.mp h₁) h₂
+
+theorem path_in_graph {g : Graph α} {u v : α}
+    (path : g |= nodes : v -> w) (h₁ : u ∈ nodes) : g |= u := by
+  induction path <;> simp
+  case edge h₂ =>
+    cases h₁ <;> simp [*] at *
+    case head => exact (edge_vertices g _ _ h₂).right
+    case tail _ _ => contradiction
+  case cons w h₂ _path₁ h₃ ih =>
+    cases h₁
+    . exact (edge_vertices g _ _ h₂).right
+    . next h₄ => exact ih h₄
+
+theorem path_start_in_graph {g : Graph α} {u v : α}
+    (path : g |= nodes : u -> v) : g |= u := by
+  induction path <;> simp
+  case edge h₁ => exact (edge_vertices g _ _ h₁).left
+  case cons ih => exact ih
+
+theorem path_finish_in_graph {g : Graph α} {u v : α}
+    (path : g |= nodes : u -> v) : g |= v := by
+  cases path <;> simp
+  case edge h₁ => exact (edge_vertices g _ _ h₁).right
+  case cons path₁ h₁ h₂ => exact (edge_vertices g _ _ h₁).right
+
+@[simp] theorem path_finish_in_pathlist {g : Graph α} {u v : α} {ps : List α}
+    (path : g |= ps : u -> v) : v ∈ ps := by
+  cases path <;> simp
+
 def split {g : Graph α} {u v w : α} {ps : List α}
     (h₁ : v ∈ ps)
     (h₂ : v ≠ w)
-    (path : g |= ps : u → w)
-    : (∃ ps₁ ps₂, ps = ps₂ ++ ps₁ ∧ g |= ps₁ : u → v ∧ g |= ps₂ : v → w) :=
+    (path : g |= ps : u -> w)
+    : (∃ ps₁ ps₂, List.Disjoint ps₁ ps₂
+                ∧ ps = ps₂ ++ ps₁
+                ∧ g |= ps₁ : u -> v
+                ∧ g |= ps₂ : v -> w) :=
   match path with
   | .edge h₃ => by cases h₁ <;> contradiction
   | .cons h₃ path' h₄ => by next v' ps' =>
@@ -56,81 +125,25 @@ def split {g : Graph α} {u v w : α} {ps : List α}
       apply Exists.intro ps₁
       apply Exists.intro (w :: ps₂)
       apply And.intro <;> simp
-      exact h'.left
-      apply And.intro
-      exact h'.right.left
-      exact .cons h₃ h'.right.right (by
-        intro h₅
-        rw [h'.left] at h₄
-        exact h₄ (List.mem_append_of_mem_left ps₁ h₅)
-      )
+      . apply And.intro
+        . intro h₅
+          rw [h'.right.left] at h₄
+          exact h₄ (List.mem_append_of_mem_right ps₂ h₅)
+        . exact h'.left
+      . apply And.intro
+        . exact h'.right.left
+        . apply And.intro
+          . exact h'.right.right.left
+          . exact Path.cons h₃ h'.right.right.right (by
+              intro h₅
+              rw [h'.right.left] at h₄
+              exact h₄ (List.mem_append_of_mem_left ps₁ h₅)
+            )
     case isTrue eq =>
       simp [eq]
       apply Exists.intro ps'
       apply Exists.intro [w]
-      apply And.intro (by simp)
-      exact And.intro path' (.edge h₃)
-
-theorem out_edges {g : Graph α} {u v w : α}
-    (path₁ : g |= ps : u → v)
-    (h₁ : ⟨v, w⟩ ∈ out_edges g v)
-    (h₂ : w ∉ ps)
-    : g |= (w::ps) : u → w := by
-  have path₂ := Path.edge (Digraph.out_edges_has_edge g v w |>.mp h₁)
-  exact Path.merge path₁ path₂ (by simp [*])
-
-theorem in_edges {g : Graph α} {u v w : α}
-    (path₂ : g |= ps : v → w)
-    (h₁ : ⟨u, v⟩ ∈ in_edges g v)
-    (h₂ : v ∉ ps)
-    : g |= (ps ++ [v]) : u → w := by
-  have path₁ := Path.edge (Digraph.in_edges_has_edge g u v |>.mp h₁)
-  exact Path.merge path₁ path₂ (by simp [*])
-
-@[simp] theorem succ {g : Graph α} {u v : α}
-    (h : v ∈ succ g u) : g |= [v] : u → v :=
-  Path.edge (succ_edge_in_graph g u v h)
-
-@[simp] theorem pred {g : Graph α} {u v : α}
-    (h : u ∈ pred g v) : g |= [v] : u → v :=
-  Path.edge (pred_edge_in_graph g u v h)
-
-theorem succ_merge {g : Graph α} {u v w : α}
-    (path₁ : g |= ps : u → v)
-    (h₁ : w ∈ Digraph.succ g v)
-    (h₂ : w ∉ ps)
-    : g |= (w::ps) : u → w := by
-  exact Path.out_edges path₁ (succ_has_edge g v w |>.mp h₁) h₂
-
-theorem pred_merge {g : Graph α} {u v w : α}
-    (path₂ : g |= ps : v → w)
-    (h₁ : u ∈ Digraph.pred g v)
-    (h₂ : v ∉ ps)
-    : g |= (ps ++ [v]) : u → w := by
-  exact Path.in_edges path₂ (pred_has_edge g u v |>.mp h₁) h₂
-
-theorem path_in_graph {g : Graph α} {u v : α}
-    (path : g |= nodes : v → w) (h₁ : u ∈ nodes) : g |= u := by
-  induction path <;> simp
-  case edge h₂ =>
-    cases h₁ <;> simp [*] at *
-    case head => exact (edge_vertices g _ _ h₂).right
-    case tail _ _ => contradiction
-  case cons w h₂ _path₁ h₃ ih =>
-    cases h₁
-    . exact (edge_vertices g _ _ h₂).right
-    . next h₄ => exact ih h₄
-
-theorem path_start_in_graph {g : Graph α} {u v : α}
-    (path : g |= nodes : u → v) : g |= u := by
-  induction path <;> simp
-  case edge h₁ => exact (edge_vertices g _ _ h₁).left
-  case cons ih => exact ih
-
-theorem path_finish_in_graph {g : Graph α} {u v : α}
-    (path : g |= nodes : u → v) : g |= v := by
-  cases path <;> simp
-  case edge h₁ => exact (edge_vertices g _ _ h₁).right
-  case cons path₁ h₁ h₂ => exact (edge_vertices g _ _ h₁).right
-
-
+      apply And.intro
+      . simp; exact h₄
+      . apply And.intro (by simp)
+        exact And.intro path' (.edge h₃)

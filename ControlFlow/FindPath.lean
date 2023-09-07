@@ -15,7 +15,7 @@ variable [Digraph α Graph] [DecidableEq α]
 structure Visited (g : Graph α) (s : α) where
   node    : α
   nodes   : List α
-  path    : g |= (node :: nodes) : s → node
+  path    : g |= (node :: nodes) : s -> node
 deriving DecidableEq
 
 @[simp] def Visited.toList {g : Graph α} (lst : List (Visited g s)) : List α :=
@@ -27,7 +27,7 @@ instance : Membership α (List (Visited (g : Graph α) s)) where
 structure Frontier (g : Graph α) (visited : List (Visited g s)) (s : α) where
   cur : α
   nodes : List α
-  path : g |= (cur :: nodes) : s → cur
+  path : g |= (cur :: nodes) : s -> cur
   nodes_visited : ∀ n ∈ nodes, n ∈ Visited.toList visited
   cur_not_visit : cur ∉ visited
 deriving DecidableEq
@@ -228,7 +228,7 @@ def get_new_frontier
   ⟨frontier', frontier'_pres_fs, frontier'_pres_new_frontier_nodes⟩
 
 inductive Result (g : Graph α) (s t : α) where
-| found     : (p : List α) → (g |= p : s → t) → Result g s t
+| found     : (p : List α) → (g |= p : s -> t) → Result g s t
 | not_found : (visited : List (Visited g s))
             → (∀ u ∈ Visited.toList visited, ∀ v ∈ Digraph.succ g u,
                 v ∈ Visited.toList visited)
