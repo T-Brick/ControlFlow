@@ -76,12 +76,23 @@ theorem Strict.trans {g : Graph α} {e v₁ v₂ v₃ : α}
     )
   ⟩
 
--- is this even true???
+-- Antisymmetry only holds if the nodes are reachable from the entry point
 theorem antisymm {g : Graph α} {e v₁ v₂ v₃ : α}
-    (d₁ : g(e) |= v₁ ≫= v₂)
-    (d₂ : g(e) |= v₂ ≫= v₁)
+    (path₁ : g |= ps : e -> v₁)
+    (d₁ : g(e) |= v₂ ≫= v₁)
+    (d₂ : g(e) |= v₁ ≫= v₂)
     : v₁ = v₂ := by
-  sorry
+  cases decEq v₁ v₂
+  case isFalse neq =>
+    have path₂ := Path.split (d₁.dom ps path₁) (neq_symm neq) path₁
+    apply Exists.elim path₂; intro ps₁ path₂'
+    apply Exists.elim path₂'; intro ps₂ h₁
+    have h₂ := d₂.dom ps₁ h₁.right.right.left
+    have h₃ := Path.finish_in_pathlist h₁.right.right.right
+    have := List.disjoint_left.mp h₁.left h₂ h₃
+    contradiction
+  case isTrue eq => exact eq
+
 
 theorem ordering {g : Graph α} {e v₁ v₂ v₃ : α}
     (h₁ : g(e) |= v₁ ≫= v₃)
