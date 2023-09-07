@@ -74,7 +74,7 @@ theorem pred_merge {g : Graph α} {u v w : α}
     : g |= (ps ++ [v]) : u -> w := by
   exact Path.in_edges path₂ (pred_has_edge g u v |>.mp h₁) h₂
 
-theorem path_in_graph {g : Graph α} {u v : α}
+theorem in_graph {g : Graph α} {u v : α}
     (path : g |= nodes : v -> w) (h₁ : u ∈ nodes) : g |= u := by
   induction path <;> simp
   case edge h₂ =>
@@ -86,21 +86,29 @@ theorem path_in_graph {g : Graph α} {u v : α}
     . exact (edge_vertices g _ _ h₂).right
     . next h₄ => exact ih h₄
 
-theorem path_start_in_graph {g : Graph α} {u v : α}
+theorem start_in_graph {g : Graph α} {u v : α}
     (path : g |= nodes : u -> v) : g |= u := by
   induction path <;> simp
   case edge h₁ => exact (edge_vertices g _ _ h₁).left
   case cons ih => exact ih
 
-theorem path_finish_in_graph {g : Graph α} {u v : α}
+theorem finish_in_graph {g : Graph α} {u v : α}
     (path : g |= nodes : u -> v) : g |= v := by
   cases path <;> simp
   case edge h₁ => exact (edge_vertices g _ _ h₁).right
   case cons path₁ h₁ h₂ => exact (edge_vertices g _ _ h₁).right
 
-@[simp] theorem path_finish_in_pathlist {g : Graph α} {u v : α} {ps : List α}
+theorem finish_in_pathlist {g : Graph α} {u v : α} {ps : List α}
     (path : g |= ps : u -> v) : v ∈ ps := by
   cases path <;> simp
+
+theorem finish_cons_rest {g : Graph α} {u v : α} {ps : List α}
+    : (g |= ps : u -> v) → ∃ps', ps = v :: ps' := by
+  intro path; cases path <;> simp
+
+theorem finish_pathlist_equiv
+    {g : Graph α} {p u v : α} {ps : List α}
+    : (g |= (p::ps) : u -> v) → p = v := by intro path; cases path <;> simp
 
 def split {g : Graph α} {u v w : α} {ps : List α}
     (h₁ : v ∈ ps)
@@ -147,3 +155,15 @@ def split {g : Graph α} {u v w : α} {ps : List α}
       . simp; exact h₄
       . apply And.intro (by simp)
         exact And.intro path' (.edge h₃)
+
+-- is there a better name for this?
+theorem pathlist_finish_equiv {g : Graph α} {u v w: α} {ps : List α}
+    (path₁ : g |= ps : u -> v)
+    (path₂ : g |= ps : u -> w)
+    : v = w := by
+  cases ps
+  case nil => contradiction
+  case cons p ps' =>
+    have veq := finish_pathlist_equiv path₁
+    have weq := finish_pathlist_equiv path₂
+    simp [←veq, ←weq]
