@@ -79,61 +79,62 @@ structure NewFrontier
     (fs : List (Frontier g visited s))
   where
     frontier : List (Frontier g (⟨f.cur, f.nodes, f.path⟩::visited) s)
-    pres_old : ∀ u, u ∈ Frontier.toList (fs)
+    pres_old : ∀ u, u ∈ Frontier.toList fs
                 → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u
                 → u ∈ Frontier.toList frontier
     pres_new : ∀ u, u ∈ Digraph.succ g f.cur
                 → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u
                 → u ∈ Frontier.toList frontier
 
--- todo split up this function
-def get_new_frontier
+private def get_succ_frontier
     (g : Graph α)
     (visited : List (Visited g s))
     (f : Frontier g visited s)
-    (fs : List (Frontier g visited s))
-    : NewFrontier g visited f fs :=
+    : (succ_frontier : List (Frontier g (⟨f.cur, f.nodes, f.path⟩::visited) s))
+      ×' ∀ u, u ∈ Digraph.succ g f.cur
+            → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u
+            → u ∈ Frontier.toList succ_frontier :=
   let visited' := ⟨f.cur, f.nodes, f.path⟩::visited
 
-  let new_frontier_nodes := Digraph.succ g f.cur
-  let new_frontier_nodes_filtered :=
-    new_frontier_nodes.filter (fun v => ¬(Visited.toList visited' |>.elem v))
+  let frontier_nodes := Digraph.succ g f.cur
+  let frontier_nodes_filtered :=
+    frontier_nodes.filter (fun v => ¬(Visited.toList visited' |>.elem v))
 
-  have new_frontier_nodes_filter_not_visit
+  have frontier_nodes_filter_not_visit
       : (v : α)
-      → v ∈ new_frontier_nodes_filtered
+      → v ∈ frontier_nodes_filtered
       → ¬(Visited.toList visited' |>.elem v) := by
     intro v h₁
     let p := (fun v => ¬(Visited.toList visited' |>.elem v))
-    exact List.filter_preserve_in p new_frontier_nodes v
+    exact List.filter_preserve_in p frontier_nodes v
       |>.mpr h₁ |>.right |> of_decide_eq_true
-  have new_frontier_nodes_filter_pres
+  have frontier_nodes_filter_pres
       : (v : α)
-      → v ∈ new_frontier_nodes_filtered
-      → v ∈ new_frontier_nodes := by
+      → v ∈ frontier_nodes_filtered
+      → v ∈ frontier_nodes := by
     intro v h₁
     let p := (fun v => ¬(Visited.toList visited' |>.elem v))
-    exact List.filter_preserve_in p new_frontier_nodes v |>.mpr h₁ |>.left
-  have new_frontier_nodes_filter_pres'
+    exact List.filter_preserve_in p frontier_nodes v |>.mpr h₁ |>.left
+  have frontier_nodes_filter_pres'
       : (v : α)
-      → v ∈ new_frontier_nodes
+      → v ∈ frontier_nodes
       → ¬(Visited.toList visited' |>.elem v)
-      → v ∈ new_frontier_nodes_filtered
+      → v ∈ frontier_nodes_filtered
       := by
     intro v h₁ h₂
     let p := (fun v => ¬(Visited.toList visited' |>.elem v))
-    have := List.filter_preserve_in p new_frontier_nodes v |>.mp
+    have := List.filter_preserve_in p frontier_nodes v |>.mp
     simp at *
     exact this h₁ h₂
 
-  let new_frontier : List (Frontier g visited' s) :=
-    new_frontier_nodes_filtered.mapMember (fun v h =>
-      have h₂ := new_frontier_nodes_filter_not_visit v h
+  let frontier : List (Frontier g visited' s) :=
+    frontier_nodes_filtered.mapMember (fun v h =>
+      have h₂ := frontier_nodes_filter_not_visit v h
       ⟨ v
       , f.cur :: f.nodes
       , by
           have h₃ := Iff.subst List.elem_iff h₂
-          apply Path.succ_merge f.path (new_frontier_nodes_filter_pres v h)
+          apply Path.succ_merge f.path (frontier_nodes_filter_pres v h)
           intro h₄
           cases h₄
           case head => simp at h₃
@@ -147,6 +148,29 @@ def get_new_frontier
       , by intro h₃; apply h₂ ((List.elem_iff |>.mpr) h₃)
       ⟩
     )
+  have frontier_pres : (u : α)
+      → u ∈ Digraph.succ g f.cur
+      → ¬(Visited.toList visited').elem u
+      → u ∈ Frontier.toList frontier := by
+    intro u h₁ h₂
+    simp
+    apply Exists.intro (Subtype.mk u (frontier_nodes_filter_pres' u h₁ h₂))
+    simp
+
+  ⟨frontier, frontier_pres⟩
+
+
+private def get_updated_fs
+    (g : Graph α)
+    (visited : List (Visited g s))
+    (f : Frontier g visited s)
+    (fs : List (Frontier g visited s))
+    : (new_fs : List (Frontier g (⟨f.cur, f.nodes, f.path⟩::visited) s))
+      ×' ∀ u, u ∈ Frontier.toList fs
+            → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u
+            → u ∈ Frontier.toList new_fs :=
+
+  let visited' := ⟨f.cur, f.nodes, f.path⟩::visited
 
   let fs_filter := fs.filter (fun f' => ¬((Visited.toList visited').elem f'.cur))
   have fs_filter_not_visit
@@ -186,11 +210,10 @@ def get_new_frontier
 
   let new_fs : List (Frontier g visited' s) := fs_filter.mapMember update_fs
   have new_fs_pres
-      : (f : Frontier g visited s)
-      → f.cur ∈ Frontier.toList fs
-      → ¬(Visited.toList visited' |>.elem f.cur)
-      → f.cur ∈ Frontier.toList new_fs := by
-    intro f h₁ h₂
+      : ∀ u, u ∈ Frontier.toList fs
+           → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u
+           → u ∈ Frontier.toList new_fs := by
+    intro u h₁ h₂
     apply Exists.elim (Frontier.in_list h₁) (fun f' h₃ => by
       rw [←h₃.right] at h₂
       rw [←h₃.right]
@@ -199,8 +222,26 @@ def get_new_frontier
       simp
     )
 
-  let frontier' := new_fs ++ new_frontier
+  ⟨new_fs, new_fs_pres⟩
 
+
+private def get_new_frontier
+    (g : Graph α)
+    (visited : List (Visited g s))
+    (f : Frontier g visited s)
+    (fs : List (Frontier g visited s))
+    : NewFrontier g visited f fs :=
+  let visited' := ⟨f.cur, f.nodes, f.path⟩::visited
+
+  let new_frontier_res := get_succ_frontier g visited f
+  let new_frontier := new_frontier_res.fst
+  let new_frontier_pres := new_frontier_res.snd
+
+  let new_fs_res := get_updated_fs g visited f fs
+  let new_fs := new_fs_res.fst
+  let new_fs_pres := new_fs_res.snd
+
+  let frontier' := new_fs ++ new_frontier
   have frontier'_pres_fs
       : (u : α)
       → u ∈ Frontier.toList fs
@@ -209,21 +250,16 @@ def get_new_frontier
     intro u h₁ h₂
     rw [Frontier.toList_mem_append]
     apply Or.intro_left
-    apply Exists.elim (Frontier.in_list h₁) (fun f h₃ => by
-      rw [←h₃.right]
-      rw [←h₃.right] at h₂
-      exact new_fs_pres f (Frontier.in_list' h₃.left) h₂
-    )
+    exact new_fs_pres u h₁ h₂
   have frontier'_pres_new_frontier_nodes
       : (u : α)
       → u ∈ Digraph.succ g f.cur
       → ¬(Visited.toList visited').elem u
       → u ∈ Frontier.toList frontier' := by
     intro u h₁ h₂
-    simp [Frontier.toList_mem_append]
+    rw [Frontier.toList_mem_append]
     apply Or.intro_right
-    apply Exists.intro (Subtype.mk u (new_frontier_nodes_filter_pres' u h₁ h₂))
-    simp
+    exact new_frontier_pres u h₁ h₂
 
   ⟨frontier', frontier'_pres_fs, frontier'_pres_new_frontier_nodes⟩
 
@@ -235,15 +271,10 @@ inductive Result (g : Graph α) (s t : α) where
             → t ∉ Visited.toList visited
             → Result g s t
 
-def find_path (g : Graph α) (s t : α) : Result g s t :=
-  explore []
-    (Digraph.succ g s |>.mapMember (fun v h =>
-      ⟨v, [], Path.succ h, by simp, by intro h₁; cases h₁⟩
-    ))
-    (by simp)
-    (by simp)
-    (by simp [List.length, ←Nat.succ_eq_add_one, Nat.zero_lt_succ])
-where explore
+/- TODO: CPS-ify maybe? -/
+private def explore
+    (g : Graph α)
+    (s t : α)
     (visited : List (Visited g s))
     (frontier : List (Frontier g visited s))
     (visited_succ : ∀ u ∈ Visited.toList visited, ∀ v ∈ Digraph.succ g u,
@@ -274,7 +305,7 @@ where explore
         rw [Nat.sub_right_comm, Nat.add_sub_cancel] at this
         exact this
 
-      explore visited' new_frontier.frontier
+      explore g s t visited' new_frontier.frontier
         (by
           intro v h₂ u h₃
           cases h₂
@@ -312,5 +343,15 @@ where explore
           sorry
         )
 
-termination_by find_path.explore visited frontier h₁ h₂ h₃ =>
+termination_by explore visited frontier h₁ h₂ h₃ =>
   (Digraph.toVertices g).length + 1 - visited.length
+
+
+def find_path (g : Graph α) (s t : α) : Result g s t :=
+  explore g s t []
+    (Digraph.succ g s |>.mapMember (fun v h =>
+      ⟨v, [], Path.succ h, by simp, by intro h₁; cases h₁⟩
+    ))
+    (by simp)
+    (by simp)
+    (by simp [List.length, ←Nat.succ_eq_add_one, Nat.zero_lt_succ])
