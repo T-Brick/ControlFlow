@@ -36,6 +36,9 @@ def merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
       . exact new_disjoint.left h₄
     )
 
+def length {g : Graph α} {u v : α} {ps : List α} (_ : g |= ps : u -> v) : Nat :=
+  ps.length + 1
+
 theorem out_edges {g : Graph α} {u v w : α}
     (path₁ : g |= ps : u -> v)
     (h₁ : ⟨v, w⟩ ∈ out_edges g v)
@@ -110,6 +113,18 @@ theorem finish_pathlist_equiv
     {g : Graph α} {p u v : α} {ps : List α}
     : (g |= (p::ps) : u -> v) → p = v := by intro path; cases path <;> simp
 
+-- is there a better name for this?
+theorem pathlist_finish_equiv {g : Graph α} {u v w: α} {ps : List α}
+    (path₁ : g |= ps : u -> v)
+    (path₂ : g |= ps : u -> w)
+    : v = w := by
+  cases ps
+  case nil => contradiction
+  case cons p ps' =>
+    have veq := finish_pathlist_equiv path₁
+    have weq := finish_pathlist_equiv path₂
+    simp [←veq, ←weq]
+
 def split {g : Graph α} {u v w : α} {ps : List α}
     (h₁ : v ∈ ps)
     (h₂ : v ≠ w)
@@ -156,14 +171,61 @@ def split {g : Graph α} {u v w : α} {ps : List α}
       . apply And.intro (by simp)
         exact And.intro path' (.edge h₃)
 
--- is there a better name for this?
-theorem pathlist_finish_equiv {g : Graph α} {u v w: α} {ps : List α}
-    (path₁ : g |= ps : u -> v)
-    (path₂ : g |= ps : u -> w)
-    : v = w := by
-  cases ps
-  case nil => contradiction
-  case cons p ps' =>
-    have veq := finish_pathlist_equiv path₁
-    have weq := finish_pathlist_equiv path₂
-    simp [←veq, ←weq]
+structure Cyclic (g : Graph α) (u : α) (ps : List α) : Prop where
+  cycle : g |= ps : u -> u
+
+instance {g : Graph α} : Coe (Path g u u ps) (Cyclic g u ps) where
+  coe path := ⟨path⟩
+instance {g : Graph α} : Coe (Cyclic g u ps) (Path g u u ps) where
+  coe cycle := cycle.cycle
+
+structure Acyclic (g : Graph α) (u v : α) (ps : List α) : Prop where
+  path : g |= ps : u -> v
+  acyclic : u ∉ ps
+
+instance {g : Graph α} : Coe (Acyclic g u v ps) (Path g u v ps) where
+  coe path := path.path
+
+def split_cycle {g : Graph α} {u v : α} {ps : List α}
+    (path : g |= ps : u -> v)
+    (h₁ : u ∈ ps)
+    (h₂ : u ≠ v)
+    : (∃ ps₁ ps₂, List.Disjoint ps₁ ps₂
+                ∧ ps = ps₂ ++ ps₁
+                ∧ Cyclic g u ps₁
+                ∧ Acyclic g u v ps₂) :=
+  let split_res := split h₁ h₂ path
+  Exists.elim split_res (fun ps₁ rest =>
+      Exists.elim rest (fun ps₂ h₃ =>
+        Exists.intro ps₁ (
+          Exists.intro ps₂ (
+            And.intro (h₃.left)
+            <| And.intro (h₃.right.left)
+            <| And.intro (h₃.right.right.left)
+            <| ⟨ h₃.right.right.right
+               , by intro h₄
+                    apply List.disjoint_right.mp h₃.left h₄
+                    exact finish_in_pathlist h₃.right.right.left
+               ⟩
+          )
+        )
+      )
+    )
+
+def remove_cycle {g : Graph α} {u v : α} {ps : List α}
+    (path : g |= ps : u -> v)
+    (h₁ : u ≠ v)
+    : ∃ ps', Acyclic g u v ps' :=
+  if h₂ : u ∈ ps then
+    let split_res := split h₂ h₁ path
+    Exists.elim split_res (fun _ps₁ rest =>
+      Exists.elim rest (fun ps₂ h₃ =>
+        Exists.intro ps₂
+          ⟨ h₃.right.right.right
+          , by intro h₄
+               apply List.disjoint_right.mp h₃.left h₄
+               exact finish_in_pathlist h₃.right.right.left
+          ⟩
+      )
+    )
+  else Exists.intro ps ⟨path, h₂⟩
