@@ -78,11 +78,15 @@ def pred (g : Graph α) (v : α) : List α :=
 def neighbors (g : Graph α) (v : α) : List α :=
   List.union (succ g v) (pred g v)
 
+def deg_out (g : Graph α) (v : α) : Nat := (succ g v).length
+def deg_in  (g : Graph α) (v : α) : Nat := (pred g v).length
 
 notation:50 g:51 " |= " v:51 => has_vertex g v
 notation:50 g:51 " |= N⁺( " v:51 " ) " => succ g v
 notation:50 g:51 " |= N⁻( " v:51 " ) " => pred g v
 notation:50 g:51 " |= N( "  v:51 " ) " => neighbors g v
+notation:50 g:51 " |= deg_out( "  v:51 " ) " => deg_out g v
+notation:50 g:51 " |= deg_in( "  v:51 " ) " => deg_in g v
 
 theorem succ_has_edge (g : Graph α) (u v : α)
     : v ∈ succ g u ↔ ⟨u, v⟩ ∈ out_edges g u := by
