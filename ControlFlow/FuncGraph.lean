@@ -359,6 +359,6 @@ def FuncGraph [DecidableEq α] : Digraph α (FuncGraphType) :=
 instance : Digraph α FuncGraphType := FuncGraph
 
 def test_graph := FuncGraph.add_edge (FuncGraph.empty) ⟨0, 1⟩
-def test_path : test_graph |= [1] : 0 → 1 := .edge (by
+def test_path : test_graph |= [1] : 0 -> 1 := .edge (by
     rw [test_graph]; exact (Digraph.add_edge_adds _ 0 1)
   )

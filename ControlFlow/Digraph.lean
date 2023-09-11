@@ -88,7 +88,13 @@ notation:50 g:51 " |= N( "  v:51 " ) " => neighbors g v
 notation:50 g:51 " |= deg_out( "  v:51 " ) " => deg_out g v
 notation:50 g:51 " |= deg_in( "  v:51 " ) " => deg_in g v
 
-theorem succ_has_edge (g : Graph α) (u v : α)
+theorem out_in_edges {g : Graph α} {u v : α}
+    : ⟨u, v⟩ ∈ out_edges g u ↔ ⟨u, v⟩ ∈ in_edges g v := by
+  apply Iff.intro <;> intro h
+  . exact in_edges_has_edge g u v |>.mpr (out_edges_has_edge g u v |>.mp h)
+  . exact out_edges_has_edge g u v |>.mpr (in_edges_has_edge g u v |>.mp h)
+
+theorem succ_has_edge {g : Graph α} {u v : α}
     : v ∈ succ g u ↔ ⟨u, v⟩ ∈ out_edges g u := by
   apply Iff.intro <;> intro h₁ <;> simp [succ] at *
   . apply Exists.elim h₁
@@ -98,14 +104,17 @@ theorem succ_has_edge (g : Graph α) (u v : α)
     exact h₂
   . apply Exists.intro ⟨u, v⟩; simp [*]
 
-theorem succ_edge_in_graph (g : Graph α) (u v : α) (h : v ∈ succ g u) : ⟨u, v⟩ ∈ g :=
-  succ_has_edge g u v |>.mp h |> (out_edges_has_edge g u v |>.mp)
+theorem succ_edge_in_graph {g : Graph α} {u v : α}
+    : v ∈ succ g u ↔ ⟨u, v⟩ ∈ g :=
+  Iff.intro
+    (fun h => succ_has_edge.mp h |> (out_edges_has_edge g u v |>.mp))
+    (fun h => out_edges_has_edge g u v |>.mpr h |> succ_has_edge.mpr)
 
-theorem succ_in_graph (g : Graph α) (u v : α) (h : v ∈ succ g u) : has_vertex g v :=
-  (succ_edge_in_graph g u v h) |> (edge_vertices g u v) |>.right
+theorem succ_in_graph {g : Graph α} {u v : α}
+    (h : v ∈ succ g u) : has_vertex g v :=
+  (succ_edge_in_graph.mp h) |> (edge_vertices g u v) |>.right
 
-
-theorem pred_has_edge (g : Graph α) (u v : α)
+theorem pred_has_edge {g : Graph α} {u v : α}
     : u ∈ pred g v ↔ ⟨u, v⟩ ∈ in_edges g v := by
   apply Iff.intro <;> intro h₁ <;> simp [pred] at *
   . apply Exists.elim h₁
@@ -115,18 +124,21 @@ theorem pred_has_edge (g : Graph α) (u v : α)
     exact h₂
   . apply Exists.intro ⟨u, v⟩; simp [*]
 
-theorem pred_edge_in_graph (g : Graph α) (u v : α) (h : u ∈ pred g v) : ⟨u, v⟩ ∈ g :=
-  pred_has_edge g u v |>.mp h |> (in_edges_has_edge g u v |>.mp)
+theorem pred_edge_in_graph {g : Graph α} {u v : α}
+    : u ∈ pred g v ↔ ⟨u, v⟩ ∈ g :=
+  Iff.intro
+    (fun h => pred_has_edge.mp h |> (in_edges_has_edge g u v |>.mp))
+    (fun h => in_edges_has_edge g u v |>.mpr h |> pred_has_edge.mpr)
 
-theorem pred_in_graph (g : Graph α) (u v : α) (h : u ∈ pred g v) : has_vertex g u :=
-  (pred_edge_in_graph g u v h) |> (edge_vertices g u v) |>.left
+theorem pred_in_graph {g : Graph α} {u v : α}
+    (h : u ∈ pred g v) : has_vertex g u :=
+  (pred_edge_in_graph.mp h) |> (edge_vertices g u v) |>.left
 
-
-theorem out_in_edges (g : Graph α) (u v : α)
-    : ⟨u, v⟩ ∈ out_edges g u ↔ ⟨u, v⟩ ∈ in_edges g v := by
-  apply Iff.intro <;> intro h
-  . exact in_edges_has_edge g u v |>.mpr (out_edges_has_edge g u v |>.mp h)
-  . exact out_edges_has_edge g u v |>.mpr (in_edges_has_edge g u v |>.mp h)
+theorem in_succ_iff_in_pred {g : Graph α} {u v : α}
+    : u ∈ succ g v ↔ v ∈ pred g u :=
+  Iff.intro
+    (fun h => succ_edge_in_graph.mp h |> pred_edge_in_graph.mpr)
+    (fun h => pred_edge_in_graph.mp h |> succ_edge_in_graph.mpr)
 
 nonrec def toString [ToString α] (g : Graph α) : String :=
   Digraph.toVertices g

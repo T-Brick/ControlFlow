@@ -57,25 +57,25 @@ theorem in_edges {g : Graph α} {u v w : α}
 
 @[simp] theorem succ {g : Graph α} {u v : α}
     (h : v ∈ succ g u) : g |= [v] : u -> v :=
-  Path.edge (succ_edge_in_graph g u v h)
+  Path.edge (succ_edge_in_graph.mp h)
 
 @[simp] theorem pred {g : Graph α} {u v : α}
     (h : u ∈ pred g v) : g |= [v] : u -> v :=
-  Path.edge (pred_edge_in_graph g u v h)
+  Path.edge (pred_edge_in_graph.mp h)
 
 theorem succ_merge {g : Graph α} {u v w : α}
     (path₁ : g |= ps : u -> v)
     (h₁ : w ∈ Digraph.succ g v)
     (h₂ : w ∉ ps)
     : g |= (w::ps) : u -> w := by
-  exact Path.out_edges path₁ (succ_has_edge g v w |>.mp h₁) h₂
+  exact Path.out_edges path₁ (succ_has_edge.mp h₁) h₂
 
 theorem pred_merge {g : Graph α} {u v w : α}
     (path₂ : g |= ps : v -> w)
     (h₁ : u ∈ Digraph.pred g v)
     (h₂ : v ∉ ps)
     : g |= (ps ++ [v]) : u -> w := by
-  exact Path.in_edges path₂ (pred_has_edge g u v |>.mp h₁) h₂
+  exact Path.in_edges path₂ (pred_has_edge.mp h₁) h₂
 
 theorem in_graph {g : Graph α} {u v : α}
     (path : g |= nodes : v -> w) (h₁ : u ∈ nodes) : g |= u := by
