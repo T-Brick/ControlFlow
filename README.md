@@ -6,4 +6,5 @@ Currently that means:
 - A definition for directed-graphs and an implementation
 - A definition for paths (all vertices are distinct in this version)
 - A function for finding a path between two vertices
+- Kildall's worklist algorithm for dataflow analysis
 - The start of defining dominance relations
