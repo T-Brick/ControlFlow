@@ -39,8 +39,6 @@ structure Result (α β : Type) [Lattice β] [Top β] [Bot β] where
   output : α → β
 
 /- Kildall's algorithm computes the fixpoint of a dataflow analysis
-    - `next` computes the next nodes in the graph we want to analysis
-        (since they could either be successors or predecessors)
     - `flow` computes the output data of node given its input
     - `entry` is the initial data of the entry node in the CFG
     - `direction` dictates where to use successors (`forward`)
