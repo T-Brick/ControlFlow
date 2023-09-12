@@ -271,6 +271,23 @@ inductive Result (g : Graph α) (s t : α) where
             → t ∉ Visited.toList visited
             → Result g s t
 
+
+def is_found {g : Graph α} {s t : α} (res : Result g s t)
+    : Bool :=
+  match res with
+  | .found _ _       => true
+  | .not_found _ _ _ => false
+
+theorem is_found_true {g : Graph α} {s t : α} {res : Result g s t}
+    : is_found res → ∃ps, ∃(path : g |= ps : s -> t), res = .found ps path := by
+  intro h₁
+  sorry
+
+theorem is_found_false {g : Graph α} {s t : α} {res : Result g s t}
+    : ¬ is_found res → ∃visited h₁ h₂, res = .not_found visited h₁ h₂ := by
+  intro h₁
+  sorry
+
 /- TODO: CPS-ify maybe? -/
 private def explore
     (g : Graph α)
