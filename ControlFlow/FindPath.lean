@@ -153,9 +153,10 @@ private def get_succ_frontier
       → ¬(Visited.toList visited').elem u
       → u ∈ Frontier.toList frontier := by
     intro u h₁ h₂
+    have := frontier_nodes_filter_pres' u h₁ h₂
     simp
-    apply Exists.intro (Subtype.mk u (frontier_nodes_filter_pres' u h₁ h₂))
-    simp
+    simp at this
+    exact this
 
   ⟨frontier, frontier_pres⟩
 
@@ -217,9 +218,12 @@ private def get_updated_fs
     apply Exists.elim (Frontier.in_list h₁) (fun f' h₃ => by
       rw [←h₃.right] at h₂
       rw [←h₃.right]
-      simp
-      apply Exists.intro (Subtype.mk f' (fs_filter_pres f' h₃.left h₂))
-      simp
+      have := fs_filter_pres f' h₃.left h₂
+      simp at *
+      apply Exists.intro f'
+      apply And.intro
+      exact this
+      rfl
     )
 
   ⟨new_fs, new_fs_pres⟩
