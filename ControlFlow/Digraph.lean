@@ -68,6 +68,8 @@ variable [Digraph α Graph] [DecidableEq α]
 
 instance : Membership (Edge α) (Graph α) := ⟨fun e g => has_edge g e⟩
 
+def Vertices (g : Graph α) := {v : α // has_vertex g v}
+
 theorem has_edge_membership (g : Graph α) (e : Edge α)
   : has_edge g e ↔ e ∈ g := by simp [Membership.mem]
 

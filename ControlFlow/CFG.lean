@@ -9,17 +9,19 @@ variable [Digraph α Graph] [DecidableEq α]
 
 structure CFG (α : Type) (Graph : (α : Type) → Type) [Digraph α Graph] where
   digraph : Graph α
-  start : α
-  start_in_graph : digraph |= start
+  start : Digraph.Vertices digraph
   reachable : ∀ v ∈ Digraph.toVertices digraph,
-                v = start ∨ ∃ ps, digraph |= ps : start -> v
+                Path.Reachable digraph start.val v
 
 instance : Coe (CFG α Graph) (Graph α) where
   coe cfg := cfg.digraph
 instance : Coe (Graph α → α → β) (CFG α Graph → β) where
-  coe graph_node := fun cfg => graph_node cfg.digraph cfg.start
+  coe graph_node := fun cfg => graph_node cfg.digraph cfg.start.val
 
 namespace CFG
+
+@[reducible] def Reachable (cfg : CFG α Graph) (v : α) : Prop :=
+  Path.Reachable cfg.digraph cfg.start.val v
 
 namespace Dataflow
 
@@ -64,7 +66,7 @@ partial def kildall [Lattice β] [Top β] [Bot β] [DecidableEq β]
   let next := if direction.is_forward then Digraph.succ else Digraph.pred
 
   let init_value : β := if combine.is_may then ⊥ else ⊤
-  let init : α → β := fun v => if v = cfg.start then entry else init_value
+  let init : α → β := fun v => if v = cfg.start.val then entry else init_value
 
   work (next cfg.digraph) (Digraph.toVertices cfg.digraph) ⟨init, init⟩
 

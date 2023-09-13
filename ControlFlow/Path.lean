@@ -77,7 +77,7 @@ theorem pred_merge {g : Graph α} {u v w : α}
     : g |= (ps ++ [v]) : u -> w := by
   exact Path.in_edges path₂ (pred_has_edge.mp h₁) h₂
 
-theorem in_graph {g : Graph α} {u v : α}
+theorem in_pathlist_in_graph {g : Graph α} {u v : α}
     (path : g |= nodes : v -> w) (h₁ : u ∈ nodes) : g |= u := by
   induction path <;> simp
   case edge h₂ =>
@@ -229,3 +229,7 @@ def remove_cycle {g : Graph α} {u v : α} {ps : List α}
       )
     )
   else Exists.intro ps ⟨path, h₂⟩
+
+inductive Reachable (g : Graph α) : (u v : α) → Prop where
+| refl : Reachable g u u
+| path : (ps : List α) → g |= ps : u -> v → Reachable g u v
