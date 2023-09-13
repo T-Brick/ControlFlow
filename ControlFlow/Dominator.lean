@@ -161,25 +161,11 @@ theorem Strict.cfg_trans {cfg : CFG α Graph} {v₁ v₂ v₃ : α}
   Strict.trans d₁ d₂
 
 -- does this require classical reasoning?
-theorem ordering {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : α}
+theorem total {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : α}
     (h₁ : g(e) |= v₁ ≫= v₃)
     (h₂ : g(e) |= v₂ ≫= v₃)
     : g(e) |= v₁ ≫= v₂ ∨ g(e) |= v₂ ≫= v₁ := by
   sorry
-
--- theorem unreachable {g : Graph α} {e v₂ : α}
-    -- (h : ∀ps, ¬(g |= ps : e -> v₂))
-    -- (hv₂ : g |= v₂)
-    -- : ∀ v₁, g |= v₁ → g(e) |= v₁ ≫= v₂ := by
-  -- intro v₁ hv₁
-  -- exact ⟨hv₁, hv₂, fun ps path => by have := h ps path; contradiction⟩
---
--- nonrec theorem Strict.unreachable  {g : Graph α} {e v₂ : α}
-    -- (h : ∀ps, ¬(g |= ps : e -> v₂))
-    -- (hv₂ : g |= v₂)
-    -- : ∀ v₁, g |= v₁ → g(e) |= v₁ ≫ v₂ := by
-  -- intro v₁ hv₁
-  -- exact ⟨unreachable h hv₂ v₁ hv₁, fun ps path => by have := h ps path; contradiction⟩
 
 theorem dom_iff_sdom_not_sdom {g : Graph α} {e : Vertices g} {v₁ v₂ : α}
     : g(e) |= v₁ ≫ v₂ ↔ g(e) |= v₁ ≫= v₂ ∧ ¬g(e) |= v₂ ≫= v₁ := by

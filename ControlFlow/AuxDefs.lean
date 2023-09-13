@@ -1,4 +1,5 @@
 import Std
+import Mathlib.Data.List.Basic
 
 theorem _root_.List.filter_remove [DecidableEq α]
     (p : α → Bool) (l : List α) (v : α)
@@ -92,31 +93,6 @@ theorem _root_.List.filter_preserve_out [DecidableEq α]
 @[simp] def List.mapMember
     (lst : List α) (f : (a : α) → (h : a ∈ lst) → β) : List β :=
   List.attach lst |>.map (fun a => f a.val a.property)
-
-/- from Mathlib -/
-@[simp]
-theorem List.pmap_eq_map (p : α → Prop) (f : α → β) (l : List α) (H) :
-    @pmap _ _ p (fun a _ => f a) l H = map f l := by
-  induction l <;> [rfl; simp only [*, pmap, map]]
-
-theorem List.map_pmap {p : α → Prop} (g : β → γ) (f : ∀ a, p a → β) (l H) :
-    map g (pmap f l H) = pmap (fun a h => g (f a h)) l H := by
-  induction l <;> [rfl; simp only [*, pmap, map]]
-
-theorem List.attach_map_coe' (l : List α) (f : α → β) :
-    (l.attach.map fun (i : {i // i ∈ l}) => f i) = l.map f := by
-  rw [List.attach, map_pmap]; exact pmap_eq_map _ _ _ _
-
-@[simp]
-theorem List.attach_map_val (l : List α) : l.attach.map Subtype.val = l :=
-  (attach_map_coe' _ _).trans l.map_id
-
-@[simp]
-theorem List.mem_attach (l : List α) : ∀ x, x ∈ l.attach
-  | ⟨a, h⟩ => by
-    have := mem_map.1 (by rw [attach_map_val] <;> exact h)
-    rcases this with ⟨⟨_, _⟩, m, rfl⟩
-    exact m
 
 def _root_.List.splitFirst [DecidableEq α] (y : α) (lst : List α) : Option (List α × List α) :=
   match lst with
