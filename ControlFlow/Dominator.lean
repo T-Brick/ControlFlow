@@ -13,7 +13,7 @@ variable [Digraph α Graph] [DecidableEq α]
  -/
 structure Dom (g : Graph α) (e : Vertices g) (v₁ v₂ : α) : Prop where
   reach : Path.Reachable g e.val v₂
-  dom : (∀ ps, (g |= ps : e.val -> v₂) → v₁ ∈ ps)
+  in_path : (∀ ps, (g |= ps : e.val -> v₂) → v₁ ∈ ps)
 
 structure Dom.Strict (g : Graph α) (e : Vertices g) (v₁ v₂ : α)
     extends Dom g e v₁ v₂ : Prop where
@@ -80,21 +80,21 @@ theorem antisymm {g : Graph α} {e : Vertices g} {v₁ v₂ : α}
     case path ps path₁ =>
       cases decEq e.val v₂
       case isFalse neq =>
-        have path₂ := Path.split (d₂.dom ps path₁) neq path₁
+        have path₂ := Path.split (d₂.in_path ps path₁) neq path₁
         apply Exists.elim path₂; intro ps₁ path₂'
         apply Exists.elim path₂'; intro ps₂ h₁
         have h₂ := Path.finish_in_pathlist h₁.right.right.left
-        have h₃ := d₂.dom ps₂ h₁.right.right.right
+        have h₃ := d₂.in_path ps₂ h₁.right.right.right
         have := List.disjoint_left.mp h₁.left h₂ h₃
         contradiction
       case isTrue eq => exact eq
   case path ps path₁ =>
     cases decEq v₁ v₂
     case isFalse neq =>
-      have path₂ := Path.split (d₁.dom ps path₁) (neq_symm neq) path₁
+      have path₂ := Path.split (d₁.in_path ps path₁) (neq_symm neq) path₁
       apply Exists.elim path₂; intro ps₁ path₂'
       apply Exists.elim path₂'; intro ps₂ h₁
-      have h₂ := d₂.dom ps₁ h₁.right.right.left
+      have h₂ := d₂.in_path ps₁ h₁.right.right.left
       have h₃ := Path.finish_in_pathlist h₁.right.right.right
       have := List.disjoint_left.mp h₁.left h₂ h₃
       contradiction
@@ -111,8 +111,8 @@ theorem trans {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : α}
     (d₁ : g(e) |= v₁ ≫= v₂)
     (d₂ : g(e) |= v₂ ≫= v₃)
     : g(e) |= v₁ ≫= v₃ := by
-  have f₁ := d₁.dom
-  have f₂ := d₂.dom
+  have f₁ := d₁.in_path
+  have f₂ := d₂.in_path
   cases decEq v₂ v₃
   case isTrue eq => rw [eq] at f₁; exact ⟨d₂.reach, f₁⟩
   case isFalse neq =>
@@ -146,11 +146,11 @@ nonrec theorem Strict.trans {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : α
       simp [eq'] at d₁
       exact Strict.not_refl d₁
     case path ps₃ path₃ =>
-      have split := Path.split (d₂.dom ps₃ path₃) d₂.differ path₃
+      have split := Path.split (d₂.in_path ps₃ path₃) d₂.differ path₃
       apply Exists.elim split; intro ps₁ split'
       apply Exists.elim split'; intro ps₂ h
       simp [eq] at *
-      apply List.disjoint_left.mp h.left (d₁.dom ps₁ h.right.right.left)
+      apply List.disjoint_left.mp h.left (d₁.in_path ps₁ h.right.right.left)
       exact Path.finish_in_pathlist h.right.right.right
   ⟩
 
@@ -189,3 +189,15 @@ instance {cfg : CFG α Graph} : Preorder (Vertices cfg.digraph) where
   lt_iff_le_not_le _ _ := dom_iff_sdom_not_sdom
 instance {cfg : CFG α Graph} : PartialOrder (Vertices cfg.digraph) where
   le_antisymm _ _ d₁ d₂ := cfg_antisymm (cfg := cfg) d₂ d₁ |> Subtype.eq
+
+-- Any algorithm which computes dominance sets should obey these properties
+-- todo maybe actually use sets
+class Algorithm [Digraph α Graph] where
+  sdom : Graph α → α → List α
+  dom : Graph α → α → List α := fun g v => [v] ++ sdom g v
+  entry_no_sdom : ∀ cfg : CFG α Graph, sdom cfg.digraph cfg.start.val = []
+  sound    : ∀ cfg : CFG α Graph, ∀ res,
+              res ∈ sdom g v → cfg.digraph(cfg.start) |= res ≫ v
+  complete : ∀ cfg : CFG α Graph, ∀ res,
+              cfg.digraph(cfg.start) |= res ≫ v → res ∈ sdom g v
+

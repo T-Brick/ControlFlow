@@ -142,6 +142,9 @@ theorem in_succ_iff_in_pred {g : Graph α} {u v : α}
     (fun h => succ_edge_in_graph.mp h |> pred_edge_in_graph.mpr)
     (fun h => pred_edge_in_graph.mp h |> succ_edge_in_graph.mpr)
 
+@[reducible] def Oriented (g : Graph α) : Prop :=
+  ∀ u v, ⟨u, v⟩ ∈ g → ⟨v, u⟩ ∉ g
+
 nonrec def toString [ToString α] (g : Graph α) : String :=
   Digraph.toVertices g
   |>.map (fun v =>

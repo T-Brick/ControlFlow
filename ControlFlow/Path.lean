@@ -233,3 +233,6 @@ def remove_cycle {g : Graph α} {u v : α} {ps : List α}
 inductive Reachable (g : Graph α) : (u v : α) → Prop where
 | refl : Reachable g u u
 | path : (ps : List α) → g |= ps : u -> v → Reachable g u v
+
+@[reducible] def Connected (g : Graph α) : Prop :=
+  ∀ u v, g |= u → g |= v → Reachable g u v
