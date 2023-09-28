@@ -84,6 +84,11 @@ deriving DecidableEq
     : f.cur ∈ Frontier.toList frontier := by
   simp; exact Exists.intro f (And.intro h₁ rfl)
 
+@[reducible] def Frontier.visit {g : Graph α}
+    (visited : List (Visited g s)) (f : Frontier g visited skip s)
+    : List (Visited g s) :=
+  ⟨f.cur, f.nodes, f.path⟩::visited
+
 structure NewFrontier
     (g : Graph α)
     (visited : List (Visited g s))
@@ -91,32 +96,32 @@ structure NewFrontier
     (f : Frontier g visited skip s)
     (fs : List (Frontier g visited skip s))
   where
-    frontier : List (Frontier g (⟨f.cur, f.nodes, f.path⟩::visited) skip s)
+    frontier : List (Frontier g (f.visit visited) skip s)
     pres_old : ∀ u, u ∈ Frontier.toList fs
-                → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u
+                → u ∉ Visited.toList (f.visit visited)
                 → u ∈ Frontier.toList frontier
     pres_new : ∀ u, u ∈ Digraph.succ g f.cur
-                → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u ∧ ¬skip u
+                → u ∉ Visited.toList (f.visit visited) ∧ ¬skip u
                 → u ∈ Frontier.toList frontier
 
 private def get_succ_frontier
     (g : Graph α)
     (visited : List (Visited g s))
     (f : Frontier g visited skip s)
-    : (succ_frontier : List (Frontier g (⟨f.cur, f.nodes, f.path⟩::visited) skip s))
+    : (succ_frontier : List (Frontier g (f.visit visited) skip s))
       ×' ∀ u, u ∈ Digraph.succ g f.cur
-            → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u ∧ ¬skip u
+            → u ∉ Visited.toList (f.visit visited) ∧ ¬skip u
             → u ∈ Frontier.toList succ_frontier :=
-  let visited' := ⟨f.cur, f.nodes, f.path⟩::visited
+  let visited' := f.visit visited
 
   let frontier_nodes := Digraph.succ g f.cur
-  let filter_func := (fun v => ¬(Visited.toList visited' |>.elem v) ∧ ¬skip v)
+  let filter_func := (fun v => v ∉ Visited.toList visited' ∧ ¬skip v)
   let frontier_nodes_filtered := frontier_nodes.filter filter_func
 
   have frontier_nodes_filter_not_visit
       : (v : α)
       → v ∈ frontier_nodes_filtered
-      → ¬(Visited.toList visited' |>.elem v) ∧ ¬skip v := by
+      → v ∉ Visited.toList visited' ∧ ¬skip v := by
     intro v h₁
     let p := filter_func
     exact List.filter_preserve_in p frontier_nodes v
@@ -126,19 +131,19 @@ private def get_succ_frontier
       → v ∈ frontier_nodes_filtered
       → v ∈ frontier_nodes := by
     intro v h₁
-    let p := filter_func
-    exact List.filter_preserve_in p frontier_nodes v |>.mpr h₁ |>.left
+    exact List.filter_preserve_in filter_func frontier_nodes v |>.mpr h₁ |>.left
   have frontier_nodes_filter_pres'
       : (v : α)
       → v ∈ frontier_nodes
-      → ¬(Visited.toList visited' |>.elem v) ∧ ¬skip v
-      → v ∈ frontier_nodes_filtered
-      := by
+      → v ∉ Visited.toList visited' ∧ ¬skip v
+      → v ∈ frontier_nodes_filtered := by
     intro v h₁ h₂
-    let p := filter_func
-    have := List.filter_preserve_in p frontier_nodes v |>.mp
-    simp at *
-    exact this h₁ h₂.left h₂.right
+    have := List.filter_preserve_in filter_func frontier_nodes v |>.mp
+    exact this (And.intro h₁ (by
+      apply decide_eq_true_iff (filter_func v) |>.mpr
+      simp at *
+      exact h₂
+    ))
 
   let frontier : List (Frontier g visited' skip s) :=
     frontier_nodes_filtered.mapMember (fun v h =>
@@ -146,7 +151,7 @@ private def get_succ_frontier
       { cur := v
       , nodes := f.cur :: f.nodes
       , path := by
-          have h₃ := Iff.subst List.elem_iff h₂.left
+          have h₃ := h₂.left
           apply Path.succ_merge f.path (frontier_nodes_filter_pres v h)
           intro h₄
           cases h₄
@@ -158,7 +163,7 @@ private def get_succ_frontier
           have last := f.nodes_visited n
           cases h₃ <;> simp [*] at *
           case tail _ h₄ => simp at h₄; apply Or.inr (last h₄)
-      , cur_not_visit := by intro h₃; apply h₂.left ((List.elem_iff |>.mpr) h₃)
+      , cur_not_visit := by intro h₃; apply h₂.left h₃
       , nodes_not_skip := by
           intro n h₃
           cases h₃
@@ -169,12 +174,11 @@ private def get_succ_frontier
     )
   have frontier_pres : (u : α)
       → u ∈ Digraph.succ g f.cur
-      → ¬(Visited.toList visited').elem u ∧ ¬skip u
+      → u ∉ Visited.toList visited' ∧ ¬skip u
       → u ∈ Frontier.toList frontier := by
     intro u h₁ h₂
     have := frontier_nodes_filter_pres' u h₁ h₂
-    simp
-    simp at this
+    simp at *
     exact this
 
   ⟨frontier, frontier_pres⟩
@@ -185,33 +189,35 @@ private def get_updated_fs
     (visited : List (Visited g s))
     (f : Frontier g visited skip s)
     (fs : List (Frontier g visited skip s))
-    : (new_fs : List (Frontier g (⟨f.cur, f.nodes, f.path⟩::visited) skip s))
+    : (new_fs : List (Frontier g (f.visit visited) skip s))
       ×' ∀ u, u ∈ Frontier.toList fs
-            → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u
+            → u ∉ Visited.toList (f.visit visited)
             → u ∈ Frontier.toList new_fs :=
 
-  let visited' := ⟨f.cur, f.nodes, f.path⟩::visited
+  let visited' := f.visit visited
 
-  let fs_filter := fs.filter (fun f' => ¬((Visited.toList visited').elem f'.cur))
+  let filter_func := fun (f': Frontier g visited skip s) =>
+    f'.cur ∉ Visited.toList visited'
+  let fs_filter := fs.filter filter_func
   have fs_filter_not_visit
       : (f : Frontier g visited skip s)
       → f ∈ fs_filter
-      → ¬(Visited.toList visited' |>.elem f.cur) := by
+      → f.cur ∉ Visited.toList visited' := by
     intro f h₁
-    let p : Frontier g visited skip s → Prop :=
-      fun f' => ¬((Visited.toList visited').elem f'.cur)
-    exact List.filter_preserve_in p fs f |>.mpr h₁ |>.right |> of_decide_eq_true
+    exact List.filter_preserve_in filter_func fs f
+      |>.mpr h₁ |>.right |> of_decide_eq_true
   have fs_filter_pres
       : (f : Frontier g visited skip s)
       → f ∈ fs
-      → ¬(Visited.toList visited' |>.elem f.cur)
+      → f.cur ∉ Visited.toList visited'
       → f ∈ fs_filter := by
     intro f h₁ h₂
-    let p : Frontier g visited skip s → Prop :=
-      fun f' => ¬((Visited.toList visited').elem f'.cur)
-    have := List.filter_preserve_in p fs f |>.mp
-    simp at *
-    exact this h₁ h₂
+    have := List.filter_preserve_in filter_func fs f |>.mp
+    exact this (And.intro h₁ (by
+      apply decide_eq_true_iff (filter_func f) |>.mpr
+      simp at *
+      exact h₂
+    ))
 
   let update_fs : (f : Frontier g visited skip s)
                 → f ∈ fs_filter
@@ -226,7 +232,7 @@ private def get_updated_fs
           have last := f.nodes_visited
           simp [*] at *
           exact Or.inr (last n h₃)
-      , by intro h₃; rw [List.elem_iff] at h₂; exact h₂ h₃
+      , by intro h₃; exact h₂ h₃
       , f.nodes_not_skip
       , f.cur_not_skip
       ⟩
@@ -234,7 +240,7 @@ private def get_updated_fs
   let new_fs : List (Frontier g visited' skip s) := fs_filter.mapMember update_fs
   have new_fs_pres
       : ∀ u, u ∈ Frontier.toList fs
-           → ¬(Visited.toList (⟨f.cur, f.nodes, f.path⟩::visited)).elem u
+           → u ∉ Visited.toList (f.visit visited)
            → u ∈ Frontier.toList new_fs := by
     intro u h₁ h₂
     apply Exists.elim (Frontier.in_list h₁) (fun f' h₃ => by
@@ -257,7 +263,7 @@ private def get_new_frontier
     (f : Frontier g visited skip s)
     (fs : List (Frontier g visited skip s))
     : NewFrontier g visited skip f fs :=
-  let visited' := ⟨f.cur, f.nodes, f.path⟩::visited
+  let visited' := f.visit visited
 
   let new_frontier_res := get_succ_frontier g visited f
   let new_frontier := new_frontier_res.fst
@@ -271,7 +277,7 @@ private def get_new_frontier
   have frontier'_pres_fs
       : (u : α)
       → u ∈ Frontier.toList fs
-      → ¬(Visited.toList visited').elem u
+      → u ∉ Visited.toList visited'
       → u ∈ Frontier.toList frontier' := by
     intro u h₁ h₂
     rw [Frontier.toList_mem_append]
@@ -280,7 +286,7 @@ private def get_new_frontier
   have frontier'_pres_new_frontier_nodes
       : (u : α)
       → u ∈ Digraph.succ g f.cur
-      → ¬(Visited.toList visited').elem u ∧ ¬skip u
+      → u ∉ Visited.toList visited' ∧ ¬skip u
       → u ∈ Frontier.toList frontier' := by
     intro u h₁ h₂
     rw [Frontier.toList_mem_append]
@@ -300,7 +306,12 @@ inductive Result (g : Graph α) (s : α) (p : α → Bool) (skip : α → Bool) 
             → (∀ v ∈ Visited.toList visited, ¬p v)
             → Result g s p skip
 
-private def explore
+@[simp] def is_found {g : Graph α} (res : Result g s found skip) : Bool :=
+  match res with
+  | .found _ _ _ _ _ => true
+  | .not_found _ _ _ => false
+
+def explore
     (g : Graph α) (s : α)
     (found : α → Bool)
     (skip : α → Bool)
@@ -324,7 +335,7 @@ private def explore
     if h₁ : found f.cur then
       .found f.cur h₁ (f.cur :: f.nodes) f.path_not_skip f.path
     else
-      let visited' := ⟨f.cur, f.nodes, f.path⟩ :: visited
+      let visited' := f.visit visited
       have cur_now_visited : f.cur ∈ Visited.toList visited' := by simp
       let new_frontier := get_new_frontier g visited f fs
 
@@ -345,7 +356,7 @@ private def explore
             case false =>
               have h := of_decide_eq_false h
               apply Or.inl
-              have := And.intro (Iff.subst (Iff.symm List.elem_iff) h) u_skip
+              have := And.intro h u_skip
               exact new_frontier.pres_new u h₃ this
             case true => exact Or.inr (of_decide_eq_true h)
           case tail _ h₄ =>
@@ -356,7 +367,7 @@ private def explore
                 apply Or.elim (Frontier.mem_ToList h₅) <;> intro h₆
                 . rw [Eq.symm h₆] at cur_now_visited; contradiction
                 . apply Or.inl
-                  exact new_frontier.pres_old u h₆ (Iff.subst (Iff.symm List.elem_iff) h)
+                  exact new_frontier.pres_old u h₆ h
               case true => exact Or.inr (of_decide_eq_true h)
             . apply Or.inr (.tail _ h₅)
         ) (by
@@ -410,6 +421,34 @@ def find_path
     (by simp)
     (by simp [List.length, ←Nat.succ_eq_add_one, Nat.zero_lt_succ])
 
+theorem find_path_for_false {g : Graph α} {s : α}
+    (h₁ : ∀ v, has_vertex g v → ¬found v)
+    : ¬is_found (find_path g s found skip) := by
+  intro h₂
+  let res := find_path g s found skip
+  cases h₃ : res
+  case found t h₄ _ _ path => exact h₁ t (finish_in_graph path) h₄
+  case not_found _ _ _ => simp [*] at h₂
+
 def find_path_to (g : Graph α) (s t : α)
     : Result g s (· = t) (fun _ => false) :=
   find_path g s (· = t) (fun _ => false)
+
+def find_reachable_skipping (g : Graph α) (s : α) (skip : α → Bool)
+    : (visited : List (Visited g s))
+      ×' (∀ u ∈ Visited.toList visited, ∀ v ∈ Digraph.succ g u,
+            ¬skip v → v ∈ Visited.toList visited) :=
+  let found := (fun _ => false)
+  match find_path g s found skip with
+  | .found _ _ _ _ _ => by
+    have : ¬is_found (find_path g s found skip) := find_path_for_false (by simp)
+    contradiction
+  | .not_found visited h _ => ⟨visited, h⟩
+
+def find_reachable (g : Graph α) (s : α)
+    : (visited : List (Visited g s))
+      ×' (∀ u ∈ Visited.toList visited, ∀ v ∈ Digraph.succ g u,
+            v ∈ Visited.toList visited) :=
+  let ⟨visited, hvisit⟩ := find_reachable_skipping g s (fun _ => false)
+  let hvisit' := fun u h₁ v h₂ => hvisit u h₁ v h₂ (by simp)
+  ⟨visited, hvisit'⟩
