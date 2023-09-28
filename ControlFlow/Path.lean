@@ -19,7 +19,7 @@ open Digraph
 
 notation:50 g:51 " |= " p:51 " : " s:51 " -> " t:51 => Path g s t p
 
-def merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
+def merge_disjoint {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     (path₁ : Path g u v ps₁)
     (path₂ : Path g v w ps₂)
     (h₁ : List.Disjoint ps₁ ps₂)
@@ -28,7 +28,7 @@ def merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
   | .edge h₂ => .cons h₂ path₁ (by simp at h₁; exact h₁)
   | .cons h₂ path₂' h₃ => by next ps' =>
     let new_disjoint := List.disjoint_cons_right.mp h₁
-    let res := merge path₁ path₂' (new_disjoint.right)
+    let res := merge_disjoint path₁ path₂' (new_disjoint.right)
     exact .cons h₂ res (by
       intro h₄
       apply Or.elim (List.mem_append.mp h₄) <;> intro h₄
@@ -45,7 +45,7 @@ theorem out_edges {g : Graph α} {u v w : α}
     (h₂ : w ∉ ps)
     : g |= (w::ps) : u -> w := by
   have path₂ := Path.edge (Digraph.out_edges_has_edge g v w |>.mp h₁)
-  exact Path.merge path₁ path₂ (by simp [*])
+  exact Path.merge_disjoint path₁ path₂ (by simp [*])
 
 theorem in_edges {g : Graph α} {u v w : α}
     (path₂ : g |= ps : v -> w)
@@ -53,7 +53,7 @@ theorem in_edges {g : Graph α} {u v w : α}
     (h₂ : v ∉ ps)
     : g |= (ps ++ [v]) : u -> w := by
   have path₁ := Path.edge (Digraph.in_edges_has_edge g u v |>.mp h₁)
-  exact Path.merge path₁ path₂ (by simp [*])
+  exact Path.merge_disjoint path₁ path₂ (by simp [*])
 
 @[simp] theorem succ {g : Graph α} {u v : α}
     (h : v ∈ succ g u) : g |= [v] : u -> v :=
@@ -230,9 +230,47 @@ def remove_cycle {g : Graph α} {u v : α} {ps : List α}
     )
   else Exists.intro ps ⟨path, h₂⟩
 
-inductive Reachable (g : Graph α) : (u v : α) → Prop where
+theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
+    (path₁ : Path g u v ps₁)
+    (path₂ : Path g v w ps₂)
+    : ∃ps, Path g u w ps := by
+  if h₁ : List.Disjoint ps₁ ps₂
+  then exact ⟨ps₂ ++ ps₁, merge_disjoint path₁ path₂ h₁⟩
+  else if uv_eq : u = v then simp [uv_eq] at *; exact ⟨ps₂, path₂⟩
+  else if vw_eq : v = w then simp [vw_eq] at *; exact ⟨ps₁, path₁⟩
+  else
+    have ⟨x, hsplit⟩ := List.first_common ps₁.reverse ps₂
+      (Iff.subst List.disjoint_reverse_left h₁)
+    simp at *
+    apply Exists.elim (remove_cycle path₁ uv_eq); intro ps₁' acyclic₁
+    apply Exists.elim (remove_cycle path₂ vw_eq); intro ps₂' acyclic₂
+    sorry
+
+inductive Reachable (g : Graph α) : (u v : Vertices g) → Prop where
 | refl : Reachable g u u
-| path : (ps : List α) → g |= ps : u -> v → Reachable g u v
+| path : (ps : List α)
+       → (path : g |= ps : u -> v)
+       → Reachable g ⟨u, start_in_graph path⟩ ⟨v, finish_in_graph path⟩
+
+theorem Reachable.trans {g : Graph α} {u v w : Vertices g}
+    (r₁ : Reachable g u v)
+    (r₂ : Reachable g v w)
+    : Reachable g u w := by
+  cases r₁
+  case refl => exact r₂
+  case path ps₁ p₁ =>
+    cases r₂
+    case refl => exact .path ps₁ p₁
+    case path ps₂ p₂ =>
+      apply Exists.elim (merge p₁ p₂); intro ps p
+      exact .path ps p
+
+instance {g : Graph α} : LE (Vertices g) where
+  le u v := Reachable g u v
+
+instance {g : Graph α} : Preorder (Vertices g) where
+  le_refl u := .refl
+  le_trans u v w := Reachable.trans
 
 @[reducible] def Connected (g : Graph α) : Prop :=
-  ∀ u v, g |= u → g |= v → Reachable g u v
+  ∀ u v, (h₁ : g |= u) → (h₂ : g |= v) → Reachable g ⟨u, h₁⟩ ⟨v, h₂⟩

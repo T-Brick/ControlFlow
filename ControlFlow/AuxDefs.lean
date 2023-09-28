@@ -131,6 +131,32 @@ theorem _root_.List.splitFirst_none [DecidableEq α]
         . intro h₃; apply neq (Eq.symm h₃)
         . exact ih heq
 
+def List.first_common [DecidableEq α]
+    (l₁ l₂ : List α)
+    (h : ¬List.Disjoint l₁ l₂)
+    : (x : α) ×' x ∈ l₁ ∧ x ∈ l₂ := by
+  induction l₁
+  case nil => have := List.disjoint_nil_left l₂; contradiction
+  case cons n ns ih =>
+    if is_in : n ∈ l₂ then exact ⟨n, And.intro (by simp) is_in⟩ else
+      have := Iff.subst List.disjoint_cons_left h
+      simp at this
+      let ⟨x, hres⟩ := ih (this is_in)
+      exact ⟨x, And.intro (List.mem_cons_of_mem n hres.left) hres.right⟩
+
+-- probs a better way to write this
+theorem List.disjoint_reverse_left {l₁ l₂ : List α}
+    : List.Disjoint l₁ l₂ ↔ List.Disjoint l₁.reverse l₂ := by
+  apply Iff.intro <;> intro h₁ a h₂ <;> rw [Disjoint] at * <;> apply h₁
+  . exact List.mem_reverse a l₁ |>.mp h₂
+  . exact List.mem_reverse a l₁ |>.mpr h₂
+
+theorem List.disjoint_reverse_right {l₁ l₂ : List α}
+    : List.Disjoint l₁ l₂ ↔ List.Disjoint l₁ l₂.reverse := by
+  apply Iff.intro <;> intro h₁ a h₂ h₃ <;> rw [Disjoint] at * <;> apply h₁ h₂
+  . exact List.mem_reverse a l₂ |>.mp h₃
+  . exact List.mem_reverse a l₂ |>.mpr h₃
+
 theorem neq_symm [DecidableEq α] {x y : α} (h₁ : ¬x = y) : (¬y = x) :=
   fun h₂ => h₁ (Eq.symm h₂)
 

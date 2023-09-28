@@ -1,6 +1,7 @@
 import ControlFlow.Path
 import Mathlib.Order.Lattice
 import Mathlib.Order.BoundedOrder
+import Mathlib.Order.Height
 
 namespace ControlFlow
 
@@ -10,8 +11,7 @@ variable [Digraph α Graph] [DecidableEq α]
 structure CFG (α : Type) (Graph : (α : Type) → Type) [Digraph α Graph] where
   digraph : Graph α
   start : Digraph.Vertices digraph
-  reachable : ∀ v ∈ Digraph.toVertices digraph,
-                Path.Reachable digraph start.val v
+  reachable : ∀ v, Path.Reachable digraph start v
 
 instance : Coe (CFG α Graph) (Graph α) where
   coe cfg := cfg.digraph
@@ -20,8 +20,17 @@ instance : Coe (Graph α → α → β) (CFG α Graph → β) where
 
 namespace CFG
 
-@[reducible] def Reachable (cfg : CFG α Graph) (v : α) : Prop :=
-  Path.Reachable cfg.digraph cfg.start.val v
+@[reducible] def Reachable (cfg : CFG α Graph)
+    (v : Digraph.Vertices cfg.digraph) : Prop :=
+  Path.Reachable cfg.digraph cfg.start v
+
+/- TODO?: reducibility of a CFG
+    A cfg is reducible if:
+      - forward edges form a DAG
+      - for all back edges (a, b), b ≫ a
+        (i.e. cannot enter a loop-body without going throught the loop entry)
+    This can be useful for specific optimisations
+ -/
 
 namespace Dataflow
 
@@ -43,15 +52,15 @@ structure Result (α β : Type) [Lattice β] [Top β] [Bot β] where
 /- Kildall's algorithm computes the fixpoint of a dataflow analysis
     - `flow` computes the output data of node given its input
     - `entry` is the initial data of the entry node in the CFG
-    - `direction` dictates where to use successors (`forward`)
+    - `direction` dictates whether to use successors (`forward`)
         or predecessors (`backward`) when traversing the CFG
     - `combine` determines which direction in the lattice the algorithm travels
         - `.may` means travelling up (union/join)
         - `.must` means travelling down (intersection/meet)
   TODOs:
-    - termination (since flow is monotonic and we don't add to the
+    - termination -- since flow is monotonic and we don't add to the
         worklist unless we move higher/lower in the lattice, we are guarenteed
-        to stop after number of nodes * height of lattice iterations)
+        to stop after number of nodes * height of lattice iterations
     - worklist ordering -- postorder/reverse postorder traversal is on average
         significantly faster
  -/
@@ -70,7 +79,8 @@ partial def kildall [Lattice β] [Top β] [Bot β] [DecidableEq β]
 
   work (next cfg.digraph) (Digraph.toVertices cfg.digraph) ⟨init, init⟩
 
-where work (next : α → List α) (worklist : List α) (acc : Result α β) : Result α β :=
+where work (next : α → List α) (worklist : List α) (acc : Result α β)
+    : Result α β :=
   match worklist with
   | [] => acc
   | n :: ns =>

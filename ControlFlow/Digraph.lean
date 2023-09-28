@@ -70,6 +70,12 @@ instance : Membership (Edge α) (Graph α) := ⟨fun e g => has_edge g e⟩
 
 def Vertices (g : Graph α) := {v : α // has_vertex g v}
 
+instance {g : Graph α} : DecidableEq (Vertices g) :=
+  fun u v =>
+    match decEq u.val v.val with
+    | isFalse h₁ => isFalse (fun h₂ => h₁ (Subtype.val_inj.mpr h₂))
+    | isTrue  h₁ => isTrue (Subtype.eq h₁)
+
 theorem has_edge_membership (g : Graph α) (e : Edge α)
   : has_edge g e ↔ e ∈ g := by simp [Membership.mem]
 

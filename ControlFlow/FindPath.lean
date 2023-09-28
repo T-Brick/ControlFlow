@@ -21,8 +21,12 @@ deriving DecidableEq
 @[simp] def Visited.toList {g : Graph α} (lst : List (Visited g s)) : List α :=
   lst.map (·.node)
 
+@[simp] theorem Visited.in_list {g : Graph α} {visited : List (Visited g s)}
+    (h : u ∈ Visited.toList visited)
+    : ∃ v ∈ visited, v.node = u := by simp at *; exact h
+
 instance : Membership α (List (Visited (g : Graph α) s)) where
-  mem v visits := v ∈ (Visited.toList visits)
+  mem v visits := v ∈ Visited.toList visits
 
 structure Frontier (g : Graph α) (visited : List (Visited g s)) (skip : α → Bool) (s : α) where
   cur : α
@@ -237,7 +241,7 @@ private def get_updated_fs
       , f.cur_not_skip
       ⟩
 
-  let new_fs : List (Frontier g visited' skip s) := fs_filter.mapMember update_fs
+  let new_fs := fs_filter.mapMember update_fs
   have new_fs_pres
       : ∀ u, u ∈ Frontier.toList fs
            → u ∉ Visited.toList (f.visit visited)
@@ -452,3 +456,19 @@ def find_reachable (g : Graph α) (s : α)
   let ⟨visited, hvisit⟩ := find_reachable_skipping g s (fun _ => false)
   let hvisit' := fun u h₁ v h₂ => hvisit u h₁ v h₂ (by simp)
   ⟨visited, hvisit'⟩
+
+def reachable_list (g : Graph α) (u : α)
+    : (nodes : List α)
+      ×' ∀ v, (v = u) ∨ (v ∈ nodes) → Reachable g u v :=
+  let ⟨visited, _⟩ := find_reachable g u
+  let nodes := Visited.toList visited
+  ⟨ nodes
+  , fun w h₁ => by
+      apply Or.elim h₁ <;> intro h₁
+      . rw [h₁]; exact .refl
+      . have := Visited.in_list h₁
+        exact Exists.elim (Visited.in_list h₁) (fun v h₃ => by
+          rw [←h₃.right]
+          exact .path (v.node :: v.nodes) v.path
+        )
+  ⟩
