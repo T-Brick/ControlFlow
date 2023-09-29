@@ -42,7 +42,7 @@ class Digraph (α : Type) (T : (α : Type) → Type) where
   edge_vertices             : ∀ g u v, has_edge g ⟨u, v⟩ → has_vertex g u ∧ has_vertex g v
   empty_edges               : ∀ e, ¬has_edge empty e
   empty_vertex              : ∀ v, ¬has_vertex empty v
-  add_edge_adds             : ∀ g u v, has_edge (add_edge g ⟨u, v⟩) ⟨u, v⟩
+  add_edge_adds             : ∀ g e, has_edge (add_edge g e) e
   add_edge_pres_edges       : ∀ g e₁ e₂, e₁ ≠ e₂ → (has_edge g e₁ ↔ has_edge (add_edge g e₂) e₁)
   add_edge_pres_vertex      : ∀ g u v w, u ≠ v → u ≠ w → (has_vertex g u ↔ has_vertex (add_edge g ⟨v, w⟩) u)
   rem_edge_removes          : ∀ g e, ¬has_edge (rem_edge g e) e
@@ -60,6 +60,9 @@ class Digraph (α : Type) (T : (α : Type) → Type) where
   in_edges_has_edge         : ∀ g u v, ⟨u, v⟩ ∈ (in_edges g v) ↔ has_edge g ⟨u, v⟩
   in_edges_finish           : ∀ g e v, e ∈ (in_edges g v) → e.finish = v
   toVertices_has_vertex     : ∀ g v, v ∈ toVertices g ↔ has_vertex g v
+
+class UndirectedGraph [Digraph α Graph] (g : Graph α) where
+  undirected_edges : ∀ u v, Digraph.has_edge g ⟨u, v⟩ ↔ Digraph.has_edge g ⟨v, u⟩
 
 namespace Digraph
 
@@ -150,6 +153,64 @@ theorem in_succ_iff_in_pred {g : Graph α} {u v : α}
 
 @[reducible] def Oriented (g : Graph α) : Prop :=
   ∀ u v, ⟨u, v⟩ ∈ g → ⟨v, u⟩ ∉ g
+
+def add_edges (g : Graph α) : List (Edge α) → Graph α
+  | [] => g
+  | e :: es => add_edge (add_edges g es) e
+
+def rem_edges (g : Graph α) : List (Edge α) → Graph α
+  | [] => g
+  | e :: es => rem_edges (rem_edge g e) es
+
+theorem add_edges_adds (g : Graph α) (edges : List (Edge α))
+    : ∀ e ∈ edges, has_edge (add_edges g edges) e := by
+  intro e h₁
+  induction edges
+  case nil => contradiction
+  case cons x xs ih =>
+    simp [add_edges]
+    cases h₁
+    case head => exact add_edge_adds (add_edges g xs) e
+    case tail _ h₂ =>
+      have := ih h₂
+      if h₃ : e = x then simp [h₃]; exact add_edge_adds (add_edges g xs) x else
+        apply add_edge_pres_edges (add_edges g xs) e x h₃ |>.mp
+        exact ih h₂
+
+theorem add_edges_pres_edge (g : Graph α) (edges : List (Edge α))
+    : ∀ e, e ∉ edges → (has_edge g e ↔ has_edge (add_edges g edges) e) := by
+  intro e h₁
+  induction edges
+  case nil => simp [add_edges]
+  case cons x xs ih =>
+    simp [add_edges]
+    if h₂ : e = x then simp [h₂] at h₁ else
+      have := add_edge_pres_edges (add_edges g xs) e x h₂
+      rw [←this]
+      exact ih (List.not_mem_of_not_mem_cons h₁)
+
+def toEdges (g : Graph α) : List (Edge α) :=
+  let vertices := toVertices g
+  vertices.foldl (fun acc v =>
+    vertices.foldl (fun acc u =>
+      if has_edge g ⟨v, u⟩ && ⟨v, u⟩ ∉ acc then ⟨v, u⟩::acc else acc
+    ) acc
+  ) []
+
+def add_vertices (g : Graph α) : List α → Graph α
+  | [] => g
+  | v :: vs => add_vertex (add_vertices g vs) v
+def rem_vertices (g : Graph α) : List α → Graph α
+  | [] => g
+  | v :: vs => rem_vertex (rem_vertices g vs) v
+
+def undirect (g : Graph α) : (undirected_g : Graph α) ×' UndirectedGraph g :=
+  let edges := toEdges g
+  let rev_edges : List (Edge α) := edges.filterMap (fun ⟨u, v⟩ =>
+    if ¬has_edge g ⟨v, u⟩ then .some ⟨v, u⟩ else .none
+  )
+  let undirected_g := add_edges g rev_edges
+  ⟨undirected_g, sorry⟩
 
 nonrec def toString [ToString α] (g : Graph α) : String :=
   Digraph.toVertices g
