@@ -457,10 +457,9 @@ def find_reachable (g : Graph α) (s : α)
   let hvisit' := fun u h₁ v h₂ => hvisit u h₁ v h₂ (by simp)
   ⟨visited, hvisit'⟩
 
-def reachable_list (g : Graph α) (u : α)
-    : (nodes : List α)
-      ×' ∀ v, (v = u) ∨ (v ∈ nodes) → Reachable g u v :=
-  let ⟨visited, _⟩ := find_reachable g u
+def reachable_list (g : Graph α) (u : Vertices g)
+    : (nodes : List α) ×' ∀ v, (v = u) ∨ (v.val ∈ nodes) → Reachable g u v :=
+  let ⟨visited, _⟩ := find_reachable g u.val
   let nodes := Visited.toList visited
   ⟨ nodes
   , fun w h₁ => by
@@ -468,7 +467,8 @@ def reachable_list (g : Graph α) (u : α)
       . rw [h₁]; exact .refl
       . have := Visited.in_list h₁
         exact Exists.elim (Visited.in_list h₁) (fun v h₃ => by
-          rw [←h₃.right]
-          exact .path (v.node :: v.nodes) v.path
+          have := v.path
+          rw [h₃.right] at this
+          exact .path (w.val :: v.nodes) this
         )
   ⟩
