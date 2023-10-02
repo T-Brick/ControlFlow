@@ -1,5 +1,6 @@
 import ControlFlow.AuxDefs
 
+/- todo: reorganise, standardise names/theorems -/
 namespace ControlFlow
 
 variable [DecidableEq α]
@@ -48,13 +49,13 @@ class Digraph (α : Type) (T : (α : Type) → Type) where
   rem_edge_removes          : ∀ g e, ¬has_edge (rem_edge g e) e
   rem_edge_pres_edges       : ∀ g e₁ e₂, e₁ ≠ e₂ → (has_edge g e₁ ↔ has_edge (rem_edge g e₂) e₁)
   rem_edge_pres_vertex      : ∀ g u v w, (has_vertex g u ↔ has_vertex (rem_edge g ⟨v, w⟩) u)
-  add_vertex_has_vertex     : ∀ g v, has_vertex (add_vertex g v) v
+  add_vertex_adds           : ∀ g v, has_vertex (add_vertex g v) v
   add_vertex_pres_edges     : ∀ g v e, has_edge g e ↔ has_edge (add_vertex g v) e
-  add_vertex_pres_vertex    : ∀ g u v, u ≠ v → (has_vertex g v ↔ has_vertex (add_vertex g u) v)
+  add_vertex_pres_vertex    : ∀ g u v, u ≠ v → (has_vertex g u ↔ has_vertex (add_vertex g v) u)
   rem_vertex_removes_vertex : ∀ g v, ¬has_vertex (rem_vertex g v) v
   rem_vertex_removes_edge   : ∀ g u v, (¬has_edge (rem_vertex g v) ⟨u, v⟩) ∧ (¬has_edge (rem_vertex g v) ⟨v, u⟩)
   rem_vertex_pres_edges     : ∀ g u v w, u ≠ v → u ≠ w → (has_edge g ⟨v, w⟩ ↔ has_edge (rem_vertex g u) ⟨v, w⟩)
-  rem_vertex_pres_vertex    : ∀ g u v, u ≠ v → (has_vertex g v ↔ has_vertex (rem_vertex g u) v)
+  rem_vertex_pres_vertex    : ∀ g u v, u ≠ v → (has_vertex g u ↔ has_vertex (rem_vertex g v) u)
   out_edges_has_edge        : ∀ g u v, ⟨u, v⟩ ∈ (out_edges g u) ↔ has_edge g ⟨u, v⟩
   out_edges_start           : ∀ g e u, e ∈ (out_edges g u) → e.start = u
   in_edges_has_edge         : ∀ g u v, ⟨u, v⟩ ∈ (in_edges g v) ↔ has_edge g ⟨u, v⟩
@@ -82,10 +83,15 @@ instance {g : Graph α} : DecidableEq (Vertices g) :=
 theorem has_edge_membership (g : Graph α) (e : Edge α)
   : has_edge g e ↔ e ∈ g := by simp [Membership.mem]
 
-def succ (g : Graph α) (v : α) : List α :=
-  Digraph.out_edges g v |>.map (·.finish)
-def pred (g : Graph α) (v : α) : List α :=
-  Digraph.in_edges g v |>.map (·.start)
+@[reducible, simp] def succ_edges (g : Graph α) (v : α) : List (Edge α) :=
+  Digraph.out_edges g v
+@[reducible, simp] def pred_edges (g : Graph α) (v : α) : List (Edge α) :=
+  Digraph.in_edges g v
+@[reducible, simp] def neighbors_edges (g : Graph α) (v : α) : List (Edge α) :=
+  List.union (succ_edges g v) (pred_edges g v)
+
+def succ (g : Graph α) (v : α) : List α := succ_edges g v |>.map (·.finish)
+def pred (g : Graph α) (v : α) : List α := pred_edges g v |>.map (·.start)
 def neighbors (g : Graph α) (v : α) : List α :=
   List.union (succ g v) (pred g v)
 
@@ -151,8 +157,51 @@ theorem in_succ_iff_in_pred {g : Graph α} {u v : α}
     (fun h => succ_edge_in_graph.mp h |> pred_edge_in_graph.mpr)
     (fun h => pred_edge_in_graph.mp h |> succ_edge_in_graph.mpr)
 
+theorem neighbors_edge_in_graph {g : Graph α} {u v : α}
+    : v ∈ neighbors g u ↔ ⟨u, v⟩ ∈ g ∨ ⟨v, u⟩ ∈ g := by
+  simp [neighbors]
+  apply Iff.intro <;> intro h₁ <;> apply Or.elim h₁ <;> intro h₂
+  . exact Or.inl (succ_edge_in_graph.mp h₂)
+  . exact Or.inr (pred_edge_in_graph.mp h₂)
+  . exact Or.inl (succ_edge_in_graph.mpr h₂)
+  . exact Or.inr (pred_edge_in_graph.mpr h₂)
+
+theorem neighbors_in_graph {g : Graph α} {u v : α} (h₁ : v ∈ neighbors g u)
+    : has_vertex g v := by
+  apply Or.elim (neighbors_edge_in_graph.mp h₁) <;> intro h₂
+  . exact edge_vertices g u v h₂ |>.right
+  . exact edge_vertices g v u h₂ |>.left
+
 @[reducible] def Oriented (g : Graph α) : Prop :=
   ∀ u v, ⟨u, v⟩ ∈ g → ⟨v, u⟩ ∉ g
+
+theorem add_edge_pres_existing (g : Graph α)
+    : ∀ e₁ e₂, e₁ ∈ g → e₁ ∈ add_edge g e₂ := by
+  intro e₁ e₂ h₁
+  if eq : e₁ = e₂
+  then rw [eq]; exact add_edge_adds g e₂
+  else exact add_edge_pres_edges g e₁ e₂ eq |>.mp h₁
+
+theorem add_edge_eq_or_in (g : Graph α)
+    : ∀ e₁ e₂, e₁ ∈ add_edge g e₂ → e₁ = e₂ ∨ e₁ ∈ g := by
+  intro e₁ e₂ h₁
+  if eq : e₁ = e₂
+  then exact Or.inl eq
+  else apply Or.inr; exact add_edge_pres_edges g e₁ e₂ eq |>.mpr h₁
+
+theorem add_vertex_pres_existing (g : Graph α)
+    : ∀ v₁ v₂, has_vertex g v₁ → has_vertex (add_vertex g v₂) v₁ := by
+  intro v₁ v₂ h₁
+  if eq : v₁ = v₂
+  then rw [eq]; exact add_vertex_adds g v₂
+  else exact add_vertex_pres_vertex g v₁ v₂ eq |>.mp h₁
+
+theorem add_vertex_eq_or_in (g : Graph α)
+    : ∀ v₁ v₂, has_vertex (add_vertex g v₂) v₁ → v₁ = v₂ ∨ has_vertex g v₁ := by
+  intro v₁ v₂ h₁
+  if eq : v₁ = v₂
+  then exact Or.inl eq
+  else apply Or.inr; exact add_vertex_pres_vertex g v₁ v₂ eq |>.mpr h₁
 
 def add_edges (g : Graph α) : List (Edge α) → Graph α
   | [] => g
@@ -177,7 +226,7 @@ theorem add_edges_adds (g : Graph α) (edges : List (Edge α))
         apply add_edge_pres_edges (add_edges g xs) e x h₃ |>.mp
         exact ih h₂
 
-theorem add_edges_pres_edge (g : Graph α) (edges : List (Edge α))
+theorem add_edges_pres_edges (g : Graph α) (edges : List (Edge α))
     : ∀ e, e ∉ edges → (has_edge g e ↔ has_edge (add_edges g edges) e) := by
   intro e h₁
   induction edges
@@ -189,13 +238,80 @@ theorem add_edges_pres_edge (g : Graph α) (edges : List (Edge α))
       rw [←this]
       exact ih (List.not_mem_of_not_mem_cons h₁)
 
-def toEdges (g : Graph α) : List (Edge α) :=
-  let vertices := toVertices g
-  vertices.foldl (fun acc v =>
-    vertices.foldl (fun acc u =>
-      if has_edge g ⟨v, u⟩ && ⟨v, u⟩ ∉ acc then ⟨v, u⟩::acc else acc
-    ) acc
-  ) []
+theorem add_edges_pres_existing (g : Graph α) (edges : List (Edge α))
+    : ∀ e ∈ g, e ∈ add_edges g edges := by
+  intro e h₁
+  if e_in : e ∈ edges
+  then exact add_edges_adds g edges e e_in
+  else exact add_edges_pres_edges g edges e e_in |>.mp h₁
+
+theorem add_edges_in_list_or_graph (g : Graph α) (edges : List (Edge α))
+    : ∀ e ∈ add_edges g edges, e ∈ edges ∨ e ∈ g := by
+  intro e h₁
+  if e_in : e ∈ edges
+  then exact Or.inl e_in
+  else apply Or.inr; exact add_edges_pres_edges g edges e e_in |>.mpr h₁
+
+def all_neighbors (g : Graph α) (vertices : List α) : List (Edge α) :=
+  match vertices with
+  | [] => []
+  | v :: vs => List.union (neighbors_edges g v) (all_neighbors g vs)
+
+def toEdges (g : Graph α) : List (Edge α) := all_neighbors g (toVertices g)
+
+theorem all_neighbors_sound (g : Graph α) (vertices : List α)
+    : ∀ e, e.start ∈ vertices ∨ e.finish ∈ vertices
+         → (e ∈ g → e ∈ all_neighbors g vertices) := by
+  intro e h₁ h₂
+  induction vertices <;> simp [all_neighbors]
+  case nil => simp at h₁
+  case cons x xs ih =>
+    if x_eq_start : x = e.start then
+      apply Or.inl
+      apply Or.inl
+      simp [x_eq_start]
+      exact (out_edges_has_edge g e.start e.finish).mpr h₂
+    else if x_eq_finish : x = e.finish then
+      apply Or.inl
+      apply Or.inr
+      simp [x_eq_finish]
+      exact (in_edges_has_edge g e.start e.finish).mpr h₂
+    else
+      apply Or.elim h₁ <;> intro h₁
+      . simp [neq_symm x_eq_start] at h₁
+        exact Or.inr (ih (Or.inl h₁))
+      . simp [neq_symm x_eq_finish] at h₁
+        exact Or.inr (ih (Or.inr h₁))
+
+theorem all_neighbors_complete (g : Graph α) (vertices : List α)
+    : ∀ e ∈ all_neighbors g vertices, e ∈ g := by
+  intro e h₁
+  induction vertices <;> simp [all_neighbors] at h₁
+  case cons x xs ih =>
+    apply Or.elim h₁ <;> intro h₁
+    . apply Or.elim h₁ <;> intro h₁
+      . have e_start_eq_x := out_edges_start g e x h₁
+        simp [←e_start_eq_x] at h₁
+        exact out_edges_has_edge g e.start e.finish |>.mp h₁
+      . have e_start_eq_x := in_edges_finish g e x h₁
+        simp [←e_start_eq_x] at h₁
+        exact in_edges_has_edge g e.start e.finish |>.mp h₁
+    . exact ih h₁
+
+theorem toEdges_sound (g : Graph α) : ∀ e ∈ g, e ∈ toEdges g := by
+  intro e h₁
+  simp [toEdges]
+  apply all_neighbors_sound g (toVertices g) e
+  apply Or.inl
+  rw [toVertices_has_vertex g e.start]
+  exact edge_vertices g e.start e.finish h₁ |>.left
+  exact h₁
+
+theorem toEdges_complete (g : Graph α) : ∀e ∈ toEdges g, e ∈ g := by
+  simp [toEdges]; exact all_neighbors_complete g (toVertices g)
+
+theorem toEdges_correct (g : Graph α) : ∀e, e ∈ g ↔ e ∈ toEdges g := by
+  intro e; apply Iff.intro; exact toEdges_sound g e; exact toEdges_complete g e
 
 def add_vertices (g : Graph α) : List α → Graph α
   | [] => g
@@ -204,13 +320,60 @@ def rem_vertices (g : Graph α) : List α → Graph α
   | [] => g
   | v :: vs => rem_vertex (rem_vertices g vs) v
 
-def undirect (g : Graph α) : (undirected_g : Graph α) ×' UndirectedGraph g :=
+def undirect (g : Graph α)
+    : (undirected_g : Graph α) ×' UndirectedGraph undirected_g :=
   let edges := toEdges g
-  let rev_edges : List (Edge α) := edges.filterMap (fun ⟨u, v⟩ =>
-    if ¬has_edge g ⟨v, u⟩ then .some ⟨v, u⟩ else .none
-  )
+  let rev_edges : List (Edge α) := edges.map (fun ⟨u, v⟩ => ⟨v, u⟩)
+
+  have edges_to_rev : ∀ u v, ⟨u, v⟩ ∈ edges → ⟨v, u⟩ ∈ rev_edges := by
+    intro u v h₁; simp; apply Exists.intro ⟨u, v⟩; simp; exact h₁
+
+  have rev_to_edges : ∀ u v, ⟨v, u⟩ ∈ rev_edges → ⟨u, v⟩ ∈ edges := by
+    intro u v h₁; simp at h₁
+    apply Exists.elim h₁; intro e h₂
+    simp [←h₂.right.left, ←h₂.right.right]
+    exact h₂.left
+
   let undirected_g := add_edges g rev_edges
-  ⟨undirected_g, sorry⟩
+
+  have undirected_edges : ∀ u v, Digraph.has_edge undirected_g ⟨u, v⟩
+                               ↔ Digraph.has_edge undirected_g ⟨v, u⟩ := by
+    intro u v
+    if in_edges : ⟨u, v⟩ ∈ edges then -- todo make this a helper
+      have in_rev_edges := edges_to_rev u v in_edges
+      have in_edges := toEdges_complete g ⟨u, v⟩ in_edges
+      apply Iff.intro <;> intro _h₁
+      . exact add_edges_adds g rev_edges ⟨v, u⟩ in_rev_edges
+      . exact add_edges_pres_existing g rev_edges ⟨u, v⟩ in_edges
+    else if rev_in_edges : ⟨v, u⟩ ∈ edges then
+      have in_rev_edges := edges_to_rev v u rev_in_edges
+      have rev_in_edges := toEdges_complete g ⟨v, u⟩ rev_in_edges
+      apply Iff.intro <;> intro _h₁
+      . exact add_edges_pres_existing g rev_edges ⟨v, u⟩ rev_in_edges
+      . exact add_edges_adds g rev_edges ⟨u, v⟩ in_rev_edges
+    else
+      apply Iff.intro <;> intro h₁
+      . have := add_edges_in_list_or_graph g rev_edges ⟨u, v⟩ h₁
+        apply Or.elim this <;> intro h₂
+        . have := rev_to_edges v u h₂; contradiction
+        . have := toEdges_sound g ⟨u, v⟩ h₂; contradiction
+      . have := add_edges_in_list_or_graph g rev_edges ⟨v, u⟩ h₁
+        apply Or.elim this <;> intro h₂
+        . have := rev_to_edges u v h₂; contradiction
+        . have := toEdges_sound g ⟨v, u⟩ h₂; contradiction
+
+  ⟨undirected_g, UndirectedGraph.mk undirected_edges⟩
+
+theorem undirect_pres_vertex (g : Graph α)
+    : ∀ v, has_vertex g v ↔ has_vertex (undirect g).fst v := by
+  intro v
+  simp [undirect]
+  apply Iff.intro <;> intro h₁
+  . sorry
+  . sorry
+
+theorem undirect_pres_edge (g : Graph α) : ∀ e ∈ g, e ∈ (undirect g).fst := by
+  intro e h₁; simp [undirect]; exact add_edges_pres_existing g _ e h₁
 
 nonrec def toString [ToString α] (g : Graph α) : String :=
   Digraph.toVertices g

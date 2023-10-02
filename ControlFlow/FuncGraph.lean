@@ -329,7 +329,7 @@ def FuncGraph [DecidableEq α] : Digraph α (FuncGraphType) :=
       apply Iff.intro <;> simp at *
       . intro h₂; simp [h₁] at *; exact h₂
   , rem_edge_pres_vertex := by simp
-  , add_vertex_has_vertex := by simp
+  , add_vertex_adds := by simp
   , add_vertex_pres_edges := by simp
   , add_vertex_pres_vertex := by
       intro g u v h₁
@@ -349,8 +349,9 @@ def FuncGraph [DecidableEq α] : Digraph α (FuncGraphType) :=
   , rem_vertex_pres_vertex := by
       intro g u v h₁
       apply Iff.intro <;> simp at *
-      . intro h₂; exact And.intro h₁ h₂
-  , out_edges_has_edge    := fun g => g.out_edges_has_edge
+      . intro h₂; exact And.intro (neq_symm h₁) h₂
+  , out_edges_has_edge    := fun g =>
+      g.out_edges_has_edge
   , out_edges_start       := fun g => g.out_edges_start
   , in_edges_has_edge     := fun g => g.in_edges_has_edge
   , in_edges_finish       := fun g => g.in_edges_finish
