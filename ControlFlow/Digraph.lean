@@ -175,7 +175,7 @@ theorem neighbors_in_graph {g : Graph α} {u v : α} (h₁ : v ∈ neighbors g u
 @[reducible] def Oriented (g : Graph α) : Prop :=
   ∀ u v, ⟨u, v⟩ ∈ g → ⟨v, u⟩ ∉ g
 
-theorem add_edge_pres_existing (g : Graph α)
+theorem add_edge_pres_existing_edge (g : Graph α)
     : ∀ e₁ e₂, e₁ ∈ g → e₁ ∈ add_edge g e₂ := by
   intro e₁ e₂ h₁
   if eq : e₁ = e₂
@@ -189,7 +189,7 @@ theorem add_edge_eq_or_in (g : Graph α)
   then exact Or.inl eq
   else apply Or.inr; exact add_edge_pres_edges g e₁ e₂ eq |>.mpr h₁
 
-theorem add_vertex_pres_existing (g : Graph α)
+theorem add_vertex_pres_existing_vertex (g : Graph α)
     : ∀ v₁ v₂, has_vertex g v₁ → has_vertex (add_vertex g v₂) v₁ := by
   intro v₁ v₂ h₁
   if eq : v₁ = v₂
@@ -207,6 +207,7 @@ def add_edges (g : Graph α) : List (Edge α) → Graph α
   | [] => g
   | e :: es => add_edge (add_edges g es) e
 
+-- todo: theorems
 def rem_edges (g : Graph α) : List (Edge α) → Graph α
   | [] => g
   | e :: es => rem_edges (rem_edge g e) es
@@ -238,7 +239,7 @@ theorem add_edges_pres_edges (g : Graph α) (edges : List (Edge α))
       rw [←this]
       exact ih (List.not_mem_of_not_mem_cons h₁)
 
-theorem add_edges_pres_existing (g : Graph α) (edges : List (Edge α))
+theorem add_edges_pres_existing_edge (g : Graph α) (edges : List (Edge α))
     : ∀ e ∈ g, e ∈ add_edges g edges := by
   intro e h₁
   if e_in : e ∈ edges
@@ -313,9 +314,12 @@ theorem toEdges_complete (g : Graph α) : ∀e ∈ toEdges g, e ∈ g := by
 theorem toEdges_correct (g : Graph α) : ∀e, e ∈ g ↔ e ∈ toEdges g := by
   intro e; apply Iff.intro; exact toEdges_sound g e; exact toEdges_complete g e
 
+-- todo theorems
 def add_vertices (g : Graph α) : List α → Graph α
   | [] => g
   | v :: vs => add_vertex (add_vertices g vs) v
+
+-- todo theorems
 def rem_vertices (g : Graph α) : List α → Graph α
   | [] => g
   | v :: vs => rem_vertex (rem_vertices g vs) v
@@ -344,12 +348,12 @@ def undirect (g : Graph α)
       have in_edges := toEdges_complete g ⟨u, v⟩ in_edges
       apply Iff.intro <;> intro _h₁
       . exact add_edges_adds g rev_edges ⟨v, u⟩ in_rev_edges
-      . exact add_edges_pres_existing g rev_edges ⟨u, v⟩ in_edges
+      . exact add_edges_pres_existing_edge g rev_edges ⟨u, v⟩ in_edges
     else if rev_in_edges : ⟨v, u⟩ ∈ edges then
       have in_rev_edges := edges_to_rev v u rev_in_edges
       have rev_in_edges := toEdges_complete g ⟨v, u⟩ rev_in_edges
       apply Iff.intro <;> intro _h₁
-      . exact add_edges_pres_existing g rev_edges ⟨v, u⟩ rev_in_edges
+      . exact add_edges_pres_existing_edge g rev_edges ⟨v, u⟩ rev_in_edges
       . exact add_edges_adds g rev_edges ⟨u, v⟩ in_rev_edges
     else
       apply Iff.intro <;> intro h₁
@@ -373,7 +377,7 @@ theorem undirect_pres_vertex (g : Graph α)
   . sorry
 
 theorem undirect_pres_edge (g : Graph α) : ∀ e ∈ g, e ∈ (undirect g).fst := by
-  intro e h₁; simp [undirect]; exact add_edges_pres_existing g _ e h₁
+  intro e h₁; simp [undirect]; exact add_edges_pres_existing_edge g _ e h₁
 
 nonrec def toString [ToString α] (g : Graph α) : String :=
   Digraph.toVertices g
