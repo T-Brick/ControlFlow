@@ -247,6 +247,7 @@ theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     apply Exists.elim (remove_cycle path₂ vw_eq); intro ps₂' acyclic₂
     sorry
 
+-- todo: should this remain in this namespace??
 inductive Reachable (g : Graph α) : (u v : Vertices g) → Prop where
 | refl : Reachable g u u
 | path : (ps : List α)
@@ -266,12 +267,26 @@ theorem Reachable.trans {g : Graph α} {u v w : Vertices g}
       apply Exists.elim (merge p₁ p₂); intro ps p
       exact .path ps p
 
-instance {g : Graph α} : LE (Vertices g) where
-  le u v := Reachable g u v
+-- instance {g : Graph α} : LE (Vertices g) where
+  -- le u v := Reachable g u v
 
-instance {g : Graph α} : Preorder (Vertices g) where
-  le_refl u := .refl
-  le_trans u v w := Reachable.trans
+-- instance {g : Graph α} : Preorder (Vertices g) where
+  -- le_refl u := .refl
+  -- le_trans u v w := Reachable.trans
 
+
+
+end Path
+
+namespace Digraph
+
+/- TODO: should this all be moved to a different file/namespace ???
+      maybe Tree.lean or `ControlFlow.Graph` ?
+-/
+
+-- todo: maybe use the `Vertices g` subtype
 @[reducible] def Connected (g : Graph α) : Prop :=
-  ∀ u v, (h₁ : g |= u) → (h₂ : g |= v) → Reachable g ⟨u, h₁⟩ ⟨v, h₂⟩
+  ∀ u v, (h₁ : g |= u) → (h₂ : g |= v) → Path.Reachable g ⟨u, h₁⟩ ⟨v, h₂⟩
+
+@[reducible] def Acyclic (g : Graph α) : Prop :=
+  ∀ u v ps, Path g u v ps → Path.Acyclic g u v ps

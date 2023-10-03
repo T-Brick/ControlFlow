@@ -60,9 +60,6 @@ theorem Strict.cfg_not_refl {cfg : CFG α Graph} {v : Vertices cfg.digraph}
     : ¬cfg.digraph(cfg.start) |= v ≫ v :=
   Strict.not_refl
 
-#check Subtype.val_inj.mpr
-#check Subtype.mk_eq_mk.mpr
-
 theorem antisymm {g : Graph α} {e v₁ v₂ : Vertices g}
     (d₁ : g(e) |= v₂ ≫= v₁)
     (d₂ : g(e) |= v₁ ≫= v₂)
