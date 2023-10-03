@@ -1,10 +1,14 @@
 # Control Flow (WIP)
 
-A library for properties of control flow graphs that are useful.
+A library for properties of graphs that are useful. Mostly focusing control flow
+graphs.
 
-Currently that means:
-- A definition for directed-graphs and an implementation
-- A definition for paths (all vertices are distinct in this version)
-- A function for finding a path between two vertices
+Currently that means (some are more complete than others):
+- Directed, Undirected, and Flow Graphs
+- Paths and Reachability
+- Algorithms for finding paths and reachability
 - Kildall's worklist algorithm for dataflow analysis
-- The start of defining dominance relations
+- Dominance Relations
+- Algorithm for computing dominance sets
+- Properties of DAGs
+- Trees
