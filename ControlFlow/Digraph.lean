@@ -20,6 +20,11 @@ instance : Membership α (Edge α) where mem v e := Edge.elem v e
     : Edge.elem v e = true ↔ v ∈ e :=
   ⟨by simp [Membership.mem], by simp [Membership.mem]⟩
 
+theorem Edge.mem_flip {u v w : α}
+    : w ∈ (Edge.mk u v) ↔ w ∈ (Edge.mk v u) := by
+  simp [←Edge.elem_iff, elem]
+  apply Iff.intro <;> (intro h; apply Or.symm; exact h)
+
 instance [ToString α] : ToString (Edge α) where
   toString e := s!"({e.start}, {e.finish})"
 
@@ -344,6 +349,13 @@ theorem toEdges_complete (g : Graph α) : ∀e ∈ toEdges g, e ∈ g := by
 theorem toEdges_iff (g : Graph α) : ∀e, e ∈ g ↔ e ∈ toEdges g := by
   intro e; apply Iff.intro; exact toEdges_sound g e; exact toEdges_complete g e
 
+theorem toEdges_vertices_in_graph (g : Graph α)
+    : ∀ e ∈ toEdges g, ∀ v ∈ e, has_vertex g v := by
+  intro e h₁ v h₂
+  have := edge_vertices g e.start e.finish (toEdges_complete g e h₁)
+  simp [←Edge.elem_iff, Edge.elem] at h₂
+  apply Or.elim h₂ <;> (intro eq; simp [eq, this])
+
 -- todo theorems
 def add_vertices (g : Graph α) : List α → Graph α
   | [] => g
@@ -367,6 +379,25 @@ theorem in_reverse_in_edges (edges : List (Edge α))
   apply Exists.elim h₁; intro e h₂
   simp [←h₂.right.left, ←h₂.right.right]
   exact h₂.left
+
+theorem reverse_pres_vertex (edges : List (Edge α)) (w : α)
+    : ∀ u v, ⟨u, v⟩ ∈ edges ∧ w ∈ (Edge.mk u v)
+           ↔ ⟨v, u⟩ ∈ reverse_edges edges ∧ w ∈ (Edge.mk v u) := by
+  intro u v
+  apply Iff.intro <;> (intro h₁; apply And.intro)
+  . exact in_edges_in_reverse edges u v h₁.left
+  . simp [←Edge.elem_iff, Edge.elem] at *
+    exact Or.symm h₁.right
+  . exact in_reverse_in_edges edges u v h₁.left
+  . simp [←Edge.elem_iff, Edge.elem] at *
+    exact Or.symm h₁.right
+
+theorem reverse_toEdge_vertices_in_graph (g : Graph α)
+    : ∀ u v, ⟨u, v⟩ ∈ reverse_edges (toEdges g)
+           → ∀ w ∈ (Edge.mk u v), has_vertex g w := by
+  intro u v h₁ w h₂
+  have := in_reverse_in_edges (toEdges g) v u h₁
+  exact toEdges_vertices_in_graph _ ⟨v, u⟩ this w (Edge.mem_flip.mp h₂)
 
 def undirect (g : Graph α)
     : (undirected_g : Graph α) ×' UndirectedGraph undirected_g :=
@@ -409,7 +440,19 @@ theorem undirect_pres_vertex (g : Graph α)
   apply Iff.intro <;> intro h₁
   . exact add_edges_pres_existing_vertex _ _ v h₁
   . have := add_edges_adds g (reverse_edges (toEdges g))
-    sorry
+    if v_in : (reverse_edges (toEdges g)) |>.any (v ∈ ·) then
+      simp at v_in
+      apply Exists.elim v_in; intro e h₂
+      exact reverse_toEdge_vertices_in_graph g
+        e.start e.finish h₂.left v h₂.right
+    else
+      simp [←Edge.elem_iff, Edge.elem] at v_in
+      have : ∀ (e : Edge α), e ∈ _ → v ≠ e.start ∧ v ≠ e.finish :=
+        (fun e in_e => by
+          apply And.intro <;> (intro h; apply (v_in e in_e))
+          exact Or.inl h; exact Or.inr h
+        )
+      exact add_edges_pres_vertex g (reverse_edges (toEdges g)) v this |>.mpr h₁
 
 theorem undirect_pres_edge (g : Graph α) : ∀ e ∈ g, e ∈ (undirect g).fst := by
   intro e h₁; simp [undirect]; exact add_edges_pres_existing_edge g _ e h₁

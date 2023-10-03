@@ -230,6 +230,7 @@ def remove_cycle {g : Graph α} {u v : α} {ps : List α}
     )
   else Exists.intro ps ⟨path, h₂⟩
 
+-- todo finish
 theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     (path₁ : Path g u v ps₁)
     (path₂ : Path g v w ps₂)
