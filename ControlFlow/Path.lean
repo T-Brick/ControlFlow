@@ -26,6 +26,9 @@ structure Path.Undirected (g : Graph α) (u v : α) (ps : List α) : Prop where
   path : Path g u v ps
   cycle_large : u = v → ps.length > 2
 
+abbrev DiPath : (g : Graph α) → α → α → List α → Prop := Path
+abbrev UndirectedPath : (g : Graph α) → α → α → List α → Prop := Path.Undirected
+
 namespace Path
 open Digraph
 

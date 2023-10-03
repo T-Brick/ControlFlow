@@ -38,11 +38,6 @@ def ofCFG (cfg : CFG α Graph)           := Dom cfg.digraph cfg.start
 def Strict.ofCFG (cfg : CFG α Graph)    := Strict cfg.digraph cfg.start
 def Immediate.ofCFG (cfg : CFG α Graph) := Immediate cfg.digraph cfg.start
 
--- theorem snd_in_graph' {g : Graph α} {e : Vertices g} {v₁ v₂ : α}
-    -- (self : Dom g e v₁ v₂) : v₂ ∈ Digraph.toVertices g := by
-  -- exact Digraph.toVertices_has_vertex g v₂ |>.mpr self.snd_in_graph
-
-
 theorem refl {g : Graph α} (e v : Vertices g)
     (reach : Path.Reachable g e v)
     : g(e) |= v ≫= v :=

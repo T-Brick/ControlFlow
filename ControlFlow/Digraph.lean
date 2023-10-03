@@ -33,6 +33,8 @@ instance [ToString α] : ToString (Edge α) where
     - [x] degree of vertex (not directly implemented)
     - [x] determine if edge is in graph
     - [x] insert/delete a vertex or an edge
+
+    TODO: split this into different subclasses
  -/
 class Digraph (α : Type) (T : (α : Type) → Type) where
   empty      : T α
