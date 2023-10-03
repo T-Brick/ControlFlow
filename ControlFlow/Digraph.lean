@@ -182,6 +182,17 @@ theorem add_edge_pres_existing_edge (g : Graph α)
   then rw [eq]; exact add_edge_adds g e₂
   else exact add_edge_pres_edges g e₁ e₂ eq |>.mp h₁
 
+theorem add_edge_pres_existing_vertex (g : Graph α)
+    : ∀ e v, has_vertex g v → has_vertex (add_edge g e) v := by
+  intro e v h₁
+  if eq_s : v = e.start then
+    rw [eq_s]
+    exact add_edge_adds g e |> edge_vertices _ e.start e.finish |>.left
+  else if eq_f : v = e.finish then
+    rw [eq_f]
+    exact add_edge_adds g e |> edge_vertices _ e.start e.finish |>.right
+  else exact add_edge_pres_vertex g v e.start e.finish eq_s eq_f |>.mp h₁
+
 theorem add_edge_eq_or_in (g : Graph α)
     : ∀ e₁ e₂, e₁ ∈ add_edge g e₂ → e₁ = e₂ ∨ e₁ ∈ g := by
   intro e₁ e₂ h₁
@@ -230,10 +241,8 @@ theorem add_edges_adds (g : Graph α) (edges : List (Edge α))
 theorem add_edges_pres_edges (g : Graph α) (edges : List (Edge α))
     : ∀ e, e ∉ edges → (has_edge g e ↔ has_edge (add_edges g edges) e) := by
   intro e h₁
-  induction edges
-  case nil => simp [add_edges]
+  induction edges <;> simp [add_edges]
   case cons x xs ih =>
-    simp [add_edges]
     if h₂ : e = x then simp [h₂] at h₁ else
       have := add_edge_pres_edges (add_edges g xs) e x h₂
       rw [←this]
@@ -252,6 +261,27 @@ theorem add_edges_in_list_or_graph (g : Graph α) (edges : List (Edge α))
   if e_in : e ∈ edges
   then exact Or.inl e_in
   else apply Or.inr; exact add_edges_pres_edges g edges e e_in |>.mpr h₁
+
+theorem add_edges_pres_existing_vertex (g : Graph α) (edges : List (Edge α))
+    : ∀ u, has_vertex g u → has_vertex (add_edges g edges) u := by
+  intro u h₁
+  induction edges <;> simp [add_edges]
+  case nil => exact h₁
+  case cons x xs ih => exact add_edge_pres_existing_vertex _ x u ih
+
+theorem add_edges_pres_vertex (g : Graph α) (edges : List (Edge α))
+    : ∀ u, (∀ e ∈ edges, u ≠ e.start ∧ u ≠ e.finish)
+         → (has_vertex g u ↔ has_vertex (add_edges g edges) u) := by
+  intro u not_eq
+  apply Iff.intro
+  . exact add_edges_pres_existing_vertex g edges u
+  . intro h₁
+    induction edges <;> simp [add_edges] at *
+    case nil => exact h₁
+    case cons x xs ih =>
+      apply ih not_eq.right
+      exact add_edge_pres_vertex _ u x.start x.finish
+        not_eq.left.left not_eq.left.right |>.mpr h₁
 
 def all_neighbors (g : Graph α) (vertices : List α) : List (Edge α) :=
   match vertices with
@@ -311,7 +341,7 @@ theorem toEdges_sound (g : Graph α) : ∀ e ∈ g, e ∈ toEdges g := by
 theorem toEdges_complete (g : Graph α) : ∀e ∈ toEdges g, e ∈ g := by
   simp [toEdges]; exact all_neighbors_complete g (toVertices g)
 
-theorem toEdges_correct (g : Graph α) : ∀e, e ∈ g ↔ e ∈ toEdges g := by
+theorem toEdges_iff (g : Graph α) : ∀e, e ∈ g ↔ e ∈ toEdges g := by
   intro e; apply Iff.intro; exact toEdges_sound g e; exact toEdges_complete g e
 
 -- todo theorems
@@ -324,33 +354,37 @@ def rem_vertices (g : Graph α) : List α → Graph α
   | [] => g
   | v :: vs => rem_vertex (rem_vertices g vs) v
 
+def reverse_edges : List (Edge α) → List (Edge α) :=
+  List.map (fun ⟨u, v⟩ => ⟨v, u⟩)
+
+theorem in_edges_in_reverse (edges : List (Edge α))
+    : ∀ u v, ⟨u, v⟩ ∈ edges → ⟨v, u⟩ ∈ reverse_edges edges := by
+  intro u v h₁; simp [reverse_edges]; apply Exists.intro ⟨u, v⟩; simp; exact h₁
+
+theorem in_reverse_in_edges (edges : List (Edge α))
+    : ∀ u v, ⟨v, u⟩ ∈ reverse_edges edges → ⟨u, v⟩ ∈ edges := by
+  intro u v h₁; simp [reverse_edges] at h₁
+  apply Exists.elim h₁; intro e h₂
+  simp [←h₂.right.left, ←h₂.right.right]
+  exact h₂.left
+
 def undirect (g : Graph α)
     : (undirected_g : Graph α) ×' UndirectedGraph undirected_g :=
   let edges := toEdges g
-  let rev_edges : List (Edge α) := edges.map (fun ⟨u, v⟩ => ⟨v, u⟩)
-
-  have edges_to_rev : ∀ u v, ⟨u, v⟩ ∈ edges → ⟨v, u⟩ ∈ rev_edges := by
-    intro u v h₁; simp; apply Exists.intro ⟨u, v⟩; simp; exact h₁
-
-  have rev_to_edges : ∀ u v, ⟨v, u⟩ ∈ rev_edges → ⟨u, v⟩ ∈ edges := by
-    intro u v h₁; simp at h₁
-    apply Exists.elim h₁; intro e h₂
-    simp [←h₂.right.left, ←h₂.right.right]
-    exact h₂.left
-
+  let rev_edges : List (Edge α) := reverse_edges edges
   let undirected_g := add_edges g rev_edges
 
   have undirected_edges : ∀ u v, Digraph.has_edge undirected_g ⟨u, v⟩
                                ↔ Digraph.has_edge undirected_g ⟨v, u⟩ := by
     intro u v
     if in_edges : ⟨u, v⟩ ∈ edges then -- todo make this a helper
-      have in_rev_edges := edges_to_rev u v in_edges
+      have in_rev_edges := (in_edges_in_reverse edges) u v in_edges
       have in_edges := toEdges_complete g ⟨u, v⟩ in_edges
       apply Iff.intro <;> intro _h₁
       . exact add_edges_adds g rev_edges ⟨v, u⟩ in_rev_edges
       . exact add_edges_pres_existing_edge g rev_edges ⟨u, v⟩ in_edges
     else if rev_in_edges : ⟨v, u⟩ ∈ edges then
-      have in_rev_edges := edges_to_rev v u rev_in_edges
+      have in_rev_edges := (in_edges_in_reverse edges) v u rev_in_edges
       have rev_in_edges := toEdges_complete g ⟨v, u⟩ rev_in_edges
       apply Iff.intro <;> intro _h₁
       . exact add_edges_pres_existing_edge g rev_edges ⟨v, u⟩ rev_in_edges
@@ -359,11 +393,11 @@ def undirect (g : Graph α)
       apply Iff.intro <;> intro h₁
       . have := add_edges_in_list_or_graph g rev_edges ⟨u, v⟩ h₁
         apply Or.elim this <;> intro h₂
-        . have := rev_to_edges v u h₂; contradiction
+        . have := (in_reverse_in_edges edges) v u h₂; contradiction
         . have := toEdges_sound g ⟨u, v⟩ h₂; contradiction
       . have := add_edges_in_list_or_graph g rev_edges ⟨v, u⟩ h₁
         apply Or.elim this <;> intro h₂
-        . have := rev_to_edges u v h₂; contradiction
+        . have := (in_reverse_in_edges edges) u v h₂; contradiction
         . have := toEdges_sound g ⟨v, u⟩ h₂; contradiction
 
   ⟨undirected_g, UndirectedGraph.mk undirected_edges⟩
@@ -373,8 +407,9 @@ theorem undirect_pres_vertex (g : Graph α)
   intro v
   simp [undirect]
   apply Iff.intro <;> intro h₁
-  . sorry
-  . sorry
+  . exact add_edges_pres_existing_vertex _ _ v h₁
+  . have := add_edges_adds g (reverse_edges (toEdges g))
+    sorry
 
 theorem undirect_pres_edge (g : Graph α) : ∀ e ∈ g, e ∈ (undirect g).fst := by
   intro e h₁; simp [undirect]; exact add_edges_pres_existing_edge g _ e h₁
