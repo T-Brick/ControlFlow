@@ -14,6 +14,18 @@ inductive Path (g : Graph α) : α → α → List α → Prop where
         → w ∉ ps
         → Path g u w (w::ps)
 
+/- A directed path is restricted so that only the starting node can
+    be revisited (to allow for a path to form a cycle). For our definition of
+    undirected graph this is a problem since we can have paths: `u -> v -> u`
+    which used the same (undirected) edge twice.
+
+    We can resolve this by enforcing that all paths from `u` to `u` must have
+    at least 3 vertices.
+ -/
+structure Path.Undirected (g : Graph α) (u v : α) (ps : List α) : Prop where
+  path : Path g u v ps
+  cycle_large : u = v → ps.length > 2
+
 namespace Path
 open Digraph
 
@@ -287,6 +299,3 @@ namespace Digraph
 -- todo: maybe use the `Vertices g` subtype
 @[reducible] def Connected (g : Graph α) : Prop :=
   ∀ u v, (h₁ : g |= u) → (h₂ : g |= v) → Path.Reachable g ⟨u, h₁⟩ ⟨v, h₂⟩
-
-@[reducible] def Acyclic (g : Graph α) : Prop :=
-  ∀ u v ps, Path g u v ps → Path.Acyclic g u v ps
