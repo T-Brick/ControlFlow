@@ -282,14 +282,14 @@ theorem Reachable.trans {g : Graph α} {u v w : Vertices g}
       apply Exists.elim (merge p₁ p₂); intro ps p
       exact .path ps p
 
--- instance {g : Graph α} : LE (Vertices g) where
-  -- le u v := Reachable g u v
+nonrec def Reachable.Vertices (g : Graph α) : Type := Vertices g
 
--- instance {g : Graph α} : Preorder (Vertices g) where
-  -- le_refl u := .refl
-  -- le_trans u v w := Reachable.trans
+instance {g : Graph α} : LE (Reachable.Vertices g) where
+  le u v := Reachable g u v
 
-
+instance {g : Graph α} : Preorder (Reachable.Vertices g) where
+  le_refl u := .refl
+  le_trans u v w := Reachable.trans
 
 end Path
 
