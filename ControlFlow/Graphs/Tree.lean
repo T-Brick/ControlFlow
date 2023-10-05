@@ -1,5 +1,5 @@
 import ControlFlow.Path
-import ControlFlow.DAG
+import ControlFlow.Graphs.DAG
 
 namespace ControlFlow
 

@@ -1,4 +1,4 @@
-import ControlFlow.CFG
+import ControlFlow.Graphs.CFG
 import Mathlib.Data.Finset.Basic
 
 namespace ControlFlow

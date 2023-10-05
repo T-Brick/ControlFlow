@@ -1,4 +1,4 @@
-import ControlFlow.Path
+import ControlFlow.Graphs.Digraph
 
 namespace ControlFlow.Digraph
 

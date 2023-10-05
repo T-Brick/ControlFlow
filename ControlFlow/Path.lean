@@ -1,5 +1,5 @@
 
-import ControlFlow.Digraph
+import ControlFlow.Graphs.Digraph
 
 namespace ControlFlow
 
