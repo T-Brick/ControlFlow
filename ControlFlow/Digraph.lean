@@ -69,15 +69,19 @@ class Digraph (α : Type) (T : (α : Type) → Type) where
   in_edges_finish           : ∀ g e v, e ∈ (in_edges g v) → e.finish = v
   toVertices_has_vertex     : ∀ g v, v ∈ toVertices g ↔ has_vertex g v
 
-class UndirectedGraph [Digraph α Graph] (g : Graph α) where
-  undirected_edges : ∀ u v, Digraph.has_edge g ⟨u, v⟩ ↔ Digraph.has_edge g ⟨v, u⟩
+instance [Digraph α Graph] : Membership (Edge α) (Graph α) :=
+  ⟨fun e g => Digraph.has_edge g e⟩
+
+class UndirectedGraph [Digraph α Graph] (g : Graph α) : Prop where
+  undirected : ∀ u v, Digraph.has_edge g ⟨u, v⟩ ↔ Digraph.has_edge g ⟨v, u⟩
+
+@[reducible] def Digraph.Oriented [Digraph α Graph] (g : Graph α) : Prop :=
+  ∀ u v, ⟨u, v⟩ ∈ g → ⟨v, u⟩ ∉ g
 
 namespace Digraph
 
 variable {Graph : (α : Type) → Type}
 variable [Digraph α Graph] [DecidableEq α]
-
-instance : Membership (Edge α) (Graph α) := ⟨fun e g => has_edge g e⟩
 
 def Vertices (g : Graph α) := {v : α // has_vertex g v}
 
@@ -178,9 +182,6 @@ theorem neighbors_in_graph {g : Graph α} {u v : α} (h₁ : v ∈ neighbors g u
   apply Or.elim (neighbors_edge_in_graph.mp h₁) <;> intro h₂
   . exact edge_vertices g u v h₂ |>.right
   . exact edge_vertices g v u h₂ |>.left
-
-@[reducible] def Oriented (g : Graph α) : Prop :=
-  ∀ u v, ⟨u, v⟩ ∈ g → ⟨v, u⟩ ∉ g
 
 theorem add_edge_pres_existing_edge (g : Graph α)
     : ∀ e₁ e₂, e₁ ∈ g → e₁ ∈ add_edge g e₂ := by
