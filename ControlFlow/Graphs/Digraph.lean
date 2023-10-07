@@ -22,7 +22,7 @@ instance : Membership α (Edge α) where mem v e := Edge.elem v e
     : Edge.elem v e = true ↔ v ∈ e :=
   ⟨by simp [Membership.mem], by simp [Membership.mem]⟩
 
-theorem Edge.mem_flip {w : α} {e: Edge α} : w ∈ e ↔ w ∈ e.flip := by
+@[simp] theorem Edge.mem_flip {w : α} {e: Edge α} : w ∈ e.flip ↔ w ∈ e := by
   simp [←Edge.elem_iff, elem]
   apply Iff.intro <;> (intro h; apply Or.symm; exact h)
 
@@ -140,9 +140,7 @@ theorem add_vertex_eq_or_in (g : Graph α)
 theorem rem_edge_pres_nonexisting_edge (g : Graph α)
     : ∀ e₁ e₂, e₁ ∉ g → e₁ ∉ rem_edge g e₂ := by
   intro e₁ e₂ h₁
-  if eq : e₁ = e₂
-  then rw [eq]; exact rem_edge_removes g e₂
-  else
+  if eq : e₁ = e₂ then rw [eq]; exact rem_edge_removes g e₂ else
     intro h₂; apply h₁
     exact rem_edge_pres_edges g e₁ e₂ eq |>.mpr h₂
 
@@ -156,6 +154,33 @@ theorem rem_edge_eq_or_not_in (g : Graph α)
   if eq : e₁ = e₂ then exact Or.inl eq else
     apply Or.inr; intro h₂; apply h₁
     exact rem_edge_pres_edges g e₁ e₂ eq |>.mp h₂
+
+theorem rem_vertex_pres_nonexisting_edge (g : Graph α)
+    : ∀ v e, e ∉ g → e ∉ rem_vertex g v := by
+  intro v e h₁ h₂
+  if eq_s : v = e.start
+  then rw [eq_s] at h₂; exact rem_vertex_removes_edge g _ _ |>.right h₂
+  else if eq_f : v = e.finish
+  then rw [eq_f] at h₂; exact rem_vertex_removes_edge g _ _ |>.left h₂
+  else apply h₁; exact rem_vertex_pres_edges g v _ _ eq_s eq_f |>.mpr h₂
+
+theorem rem_vertex_pres_nonexisting_vertex (g : Graph α)
+    : ∀ u v, ¬has_vertex g u → ¬has_vertex (rem_vertex g v) u := by
+  intro u v h₁
+  if eq : u = v
+  then rw [eq]; exact rem_vertex_removes_vertex g v
+  else exact rem_vertex_pres_vertex g u v eq |> Iff.not |>.mp h₁
+
+theorem in_rem_vertex_neq (g : Graph α)
+    : ∀ u v, has_vertex (rem_vertex g v) u → u ≠ v := by
+  intro u v h₁ eq; simp [eq, rem_vertex_removes_vertex] at h₁
+
+theorem rem_vertex_eq_or_not_in (g : Graph α)
+    : ∀ u v, ¬has_vertex (rem_vertex g v) u → u = v ∨ ¬has_vertex g u := by
+  intro u v h₁
+  if eq : u = v then exact Or.inl eq else
+    apply Or.inr; intro h₂; apply h₁
+    exact rem_vertex_pres_vertex g u v eq |>.mp h₂
 
 theorem out_in_edges {g : Graph α} {u v : α}
     : ⟨u, v⟩ ∈ out_edges g u ↔ ⟨u, v⟩ ∈ in_edges g v := by
@@ -613,6 +638,94 @@ theorem add_vertices_in_list_or_graph (g : Graph α) (vertices : List α)
 def rem_vertices (g : Graph α) : List α → Graph α
   | [] => g
   | v :: vs => rem_vertex (rem_vertices g vs) v
+
+theorem rem_vertices_removes_vertex (g : Graph α) (vertices : List α)
+    : ∀ v ∈ vertices, ¬has_vertex (rem_vertices g vertices) v := by
+  intro v h₁ h₂
+  induction vertices <;> simp [rem_vertices] at *
+  case cons x xs ih =>
+    if eq : v = x then
+      rw [eq] at h₂; exact rem_vertex_removes_vertex _ x h₂
+    else
+      simp [eq] at h₁
+      apply ih h₁
+      exact rem_vertex_pres_vertex (rem_vertices g xs) v x eq |>.mpr h₂
+
+theorem rem_vertices_removes_edge (g : Graph α) (vertices : List α)
+    : ∀ u, ∀ v ∈ vertices, ⟨u, v⟩ ∉ rem_vertices g vertices
+                         ∧ ⟨v, u⟩ ∉ rem_vertices g vertices := by
+  intro u v h₁
+  induction vertices <;> simp [rem_vertices] at *
+  case cons x xs ih =>
+    apply Or.elim h₁ <;> intro h₁
+    . simp [h₁] at *
+      exact rem_vertex_removes_edge _ u x
+    . apply And.intro
+      . exact rem_vertex_pres_nonexisting_edge _ x _ (ih h₁).left
+      . exact rem_vertex_pres_nonexisting_edge _ x _ (ih h₁).right
+
+theorem rem_vertices_pres_edges (g : Graph α) (vertices : List α)
+    : ∀ u v, u ∉ vertices → v ∉ vertices
+           → (⟨u, v⟩ ∈ g ↔ ⟨u, v⟩ ∈ rem_vertices g vertices) := by
+  intro u v h₁ h₂
+  induction vertices <;> simp [rem_vertices]
+  case cons x xs ih =>
+    if eq_xu : x = u then simp [eq_xu] at h₁ else
+    if eq_xv : x = v then simp [eq_xv] at h₂ else
+      have h₁ := List.not_mem_of_not_mem_cons h₁
+      have h₂ := List.not_mem_of_not_mem_cons h₂
+      rw [ih h₁ h₂]
+      exact rem_vertex_pres_edges _ x u v eq_xu eq_xv
+
+theorem rem_vertices_pres_vertex (g : Graph α) (vertices : List α)
+    : ∀ v, v ∉ vertices
+         → (has_vertex g v ↔ has_vertex (rem_vertices g vertices) v) := by
+  intro v h₁
+  induction vertices <;> simp [rem_vertices]
+  case cons x xs ih =>
+    if eq : v = x then simp [eq] at h₁ else
+      rw [ih (List.not_mem_of_not_mem_cons h₁)]
+      exact rem_vertex_pres_vertex _ _ _ eq
+
+theorem rem_vertices_pres_nonexisting_edge (g : Graph α) (vertices : List α)
+    : ∀ e, e ∉ g → e ∉ rem_vertices g vertices := by
+  intro e h₁ h₂
+  induction vertices <;> simp [rem_vertices] at *
+  case nil => contradiction
+  case cons x xs ih => exact rem_vertex_pres_nonexisting_edge _ x e ih h₂
+
+theorem rem_vertices_pres_nonexisting_vertex (g : Graph α) (vertices : List α)
+    : ∀ v, ¬has_vertex g v → ¬has_vertex (rem_vertices g vertices) v := by
+  intro v h₁ h₂
+  induction vertices <;> simp [rem_vertices] at *
+  case nil => simp [h₂] at h₁
+  case cons x xs ih =>
+    if eq : v = x
+    then simp [eq, rem_vertex_removes_vertex (rem_vertices g xs) x] at h₂
+    else exact rem_vertex_pres_vertex _ _ _ eq |>.mpr h₂ |> ih
+
+theorem in_rem_vertices_neq (g : Graph α) (vertices : List α)
+    : ∀ v, has_vertex (rem_vertices g vertices) v → v ∉ vertices := by
+  intro v h₁ h₂
+  induction vertices <;> rw [rem_vertices] at *
+  case nil => contradiction
+  case cons x xs ih =>
+    if eq : v = x then
+      simp [eq, rem_vertex_removes_vertex (rem_vertices g xs) x] at h₁
+    else
+      apply rem_vertex_pres_vertex _ _ _ eq |>.mpr h₁ |> ih
+      exact List.mem_of_ne_of_mem eq h₂
+
+theorem rem_vertices_in_list_or_not_graph (g : Graph α) (vertices : List α)
+    : ∀ v, ¬has_vertex (rem_vertices g vertices) v
+         → v ∈ vertices ∨ ¬has_vertex g v := by
+  intro v h₁
+  induction vertices <;> rw [rem_vertices] at *
+  case nil => simp at *; exact h₁
+  case cons x xs ih =>
+    if eq : v = x then simp [eq] else
+      simp only [eq, List.find?, List.mem_cons, eq, false_or]
+      exact rem_vertex_pres_vertex _ _ _ eq |> Iff.not |>.mpr h₁ |> ih
 
 
 /- Functions and theorems for flipping/reversing edges -/
