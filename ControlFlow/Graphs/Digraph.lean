@@ -137,6 +137,26 @@ theorem add_vertex_eq_or_in (g : Graph α)
   then exact Or.inl eq
   else apply Or.inr; exact add_vertex_pres_vertex g v₁ v₂ eq |>.mpr h₁
 
+theorem rem_edge_pres_nonexisting_edge (g : Graph α)
+    : ∀ e₁ e₂, e₁ ∉ g → e₁ ∉ rem_edge g e₂ := by
+  intro e₁ e₂ h₁
+  if eq : e₁ = e₂
+  then rw [eq]; exact rem_edge_removes g e₂
+  else
+    intro h₂; apply h₁
+    exact rem_edge_pres_edges g e₁ e₂ eq |>.mpr h₂
+
+theorem in_rem_edge_neq (g : Graph α)
+    : ∀ e₁ e₂, e₁ ∈ rem_edge g e₂ → e₁ ≠ e₂ := by
+  intro e₁ e₂ h₁ eq; rw [eq] at h₁; exact rem_edge_removes g e₂ h₁
+
+theorem rem_edge_eq_or_not_in (g : Graph α)
+    : ∀ e₁ e₂, e₁ ∉ rem_edge g e₂ → e₁ = e₂ ∨ e₁ ∉ g := by
+  intro e₁ e₂ h₁
+  if eq : e₁ = e₂ then exact Or.inl eq else
+    apply Or.inr; intro h₂; apply h₁
+    exact rem_edge_pres_edges g e₁ e₂ eq |>.mp h₂
+
 theorem out_in_edges {g : Graph α} {u v : α}
     : ⟨u, v⟩ ∈ out_edges g u ↔ ⟨u, v⟩ ∈ in_edges g v := by
   apply Iff.intro <;> intro h
@@ -249,8 +269,8 @@ theorem add_undirected_edge_adds (g : Graph α) (e : Edge α)
     : has_edge (add_undirected_edge g e) e
     ∧ has_edge (add_undirected_edge g e) e.flip := by
   simp [add_undirected_edge]; apply And.intro
-  exact add_edge_pres_existing_edge _ _ _ (add_edge_adds _ _)
-  exact add_edge_adds _ _
+  . exact add_edge_pres_existing_edge _ _ _ (add_edge_adds _ _)
+  . exact add_edge_adds _ _
 
 theorem add_undirected_edge_pres_edges (g : Graph α) (e₁ e₂ : Edge α)
     (neq : e₁ ≠ e₂) (neqf : e₁ ≠ e₂.flip)
@@ -303,12 +323,11 @@ theorem add_edges_adds (g : Graph α) (edges : List (Edge α))
   induction edges
   case nil => contradiction
   case cons x xs ih =>
-    simp [add_edges]
+    rw [add_edges]
     cases h₁
     case head => exact add_edge_adds (add_edges g xs) e
     case tail _ h₂ =>
-      have := ih h₂
-      if h₃ : e = x then simp [h₃]; exact add_edge_adds (add_edges g xs) x else
+      if h₃ : e = x then rw [h₃]; exact add_edge_adds (add_edges g xs) x else
         apply add_edge_pres_edges (add_edges g xs) e x h₃ |>.mp
         exact ih h₂
 
@@ -318,8 +337,7 @@ theorem add_edges_pres_edges (g : Graph α) (edges : List (Edge α))
   induction edges <;> simp [add_edges]
   case cons x xs ih =>
     if h₂ : e = x then simp [h₂] at h₁ else
-      have := add_edge_pres_edges (add_edges g xs) e x h₂
-      rw [←this]
+      rw [←add_edge_pres_edges (add_edges g xs) e x h₂]
       exact ih (List.not_mem_of_not_mem_cons h₁)
 
 theorem add_edges_pres_existing_edge (g : Graph α) (edges : List (Edge α))
@@ -363,12 +381,107 @@ theorem add_edges_pres_vertex (g : Graph α) (edges : List (Edge α))
 def rem_undirected_edge (g : Graph α) (e : Edge α) : Graph α :=
   rem_edge (rem_edge g e) e.flip
 
+theorem rem_undirected_edge_removes (g : Graph α) (e : Edge α)
+    : ¬has_edge (rem_undirected_edge g e) e
+    ∧ ¬has_edge (rem_undirected_edge g e) e.flip := by
+  rw [rem_undirected_edge]; apply And.intro
+  . exact rem_edge_pres_nonexisting_edge _ _ _ (rem_edge_removes _ _)
+  . exact rem_edge_removes _ _
+
+theorem rem_undirected_edge_pres_edges (g : Graph α) (e₁ e₂ : Edge α)
+    (neq : e₁ ≠ e₂) (neqf : e₁ ≠ e₂.flip)
+    : has_edge g e₁ ↔ has_edge (rem_undirected_edge g e₂) e₁ := by
+  rw [ rem_undirected_edge
+     , rem_edge_pres_edges _ _ _ _
+     , rem_edge_pres_edges _ _ _ _
+     ]
+  exact neqf; exact neq
+
+theorem rem_undirected_edge_pres_nonexisting_edge (g : Graph α)
+    : ∀ e₁ e₂, e₁ ∉ g → e₁ ∉ rem_undirected_edge g e₂ := by
+  intro e₁ e₂ h; simp [rem_undirected_edge]
+  exact rem_edge_pres_nonexisting_edge _ _ _
+    (rem_edge_pres_nonexisting_edge _ _ _ h)
+
+theorem in_rem_undirected_edge_neq (g : Graph α)
+    : ∀ e₁ e₂, e₁ ∈ rem_undirected_edge g e₂ → e₁ ≠ e₂ ∧ e₁ ≠ e₂.flip := by
+  simp [rem_undirected_edge]; intro e₁ e₂ h₁
+  apply And.intro <;> (intro eq; rw [eq] at h₁)
+  . exact rem_undirected_edge_removes _ _ |>.left h₁
+  . exact rem_undirected_edge_removes _ _ |>.right h₁
+
+theorem rem_undirected_edge_eq_or_not_in (g : Graph α)
+    : ∀ e₁ e₂, e₁ ∉ rem_undirected_edge g e₂
+             → (e₁ = e₂ ∨ e₁ = e₂.flip) ∨ e₁ ∉ g := by
+  simp [rem_undirected_edge]; intro e₁ e₂ h
+  apply Or.elim (rem_edge_eq_or_not_in _ _ _ h) <;> intro h
+  . exact Or.inl (Or.inr h)
+  . apply Or.elim (rem_edge_eq_or_not_in _ _ _ h) <;> intro h
+    . exact Or.inl (Or.inl h)
+    . exact Or.inr h
+
+theorem rem_undirected_edge_pres_vertex (g : Graph α) (u v w : α)
+    : has_vertex g u ↔ has_vertex (rem_undirected_edge g ⟨v, w⟩) u := by
+  rw [ rem_undirected_edge
+     , rem_edge_pres_vertex _ _ _ _
+     , rem_edge_pres_vertex _ _ _ _
+     ]
+
 
 /- Function and theorems for removing lists of edges -/
 
 def rem_edges (g : Graph α) : List (Edge α) → Graph α
   | [] => g
-  | e :: es => rem_edges (rem_edge g e) es
+  | e :: es => rem_edge (rem_edges g es) e
+
+theorem rem_edges_removes (g : Graph α) (edges : List (Edge α))
+    : ∀ e ∈ edges, ¬has_edge (rem_edges g edges) e := by
+  intro e h₁
+  induction edges
+  case nil => contradiction
+  case cons x xs ih =>
+    rw [rem_edges]
+    cases h₁
+    case head => exact rem_edge_removes (rem_edges g xs) e
+    case tail _ h₂ =>
+      if eq : e = x then rw [eq]; exact rem_edge_removes (rem_edges g xs) x else
+        intro h₄
+        apply ih h₂
+        exact rem_edge_pres_edges (rem_edges g xs) e x eq |>.mpr h₄
+
+theorem rem_edges_pres_edges (g : Graph α) (edges : List (Edge α))
+    : ∀ e, e ∉ edges → (has_edge g e ↔ has_edge (rem_edges g edges) e) := by
+  intro e h₁
+  induction edges <;> simp [rem_edges]
+  case cons x xs ih =>
+    if h₂ : e = x then simp [h₂] at h₁ else
+      rw [←rem_edge_pres_edges (rem_edges g xs) e x h₂]
+      exact ih (List.not_mem_of_not_mem_cons h₁)
+
+theorem rem_edges_pres_nonexisting_edge (g : Graph α) (edges : List (Edge α))
+    : ∀ e, e ∉ g → e ∉ rem_edges g edges := by
+  intro e h₁
+  if e_in : e ∈ edges then exact rem_edges_removes g edges e e_in else
+    intro h₂; apply h₁
+    exact rem_edges_pres_edges g edges e e_in |>.mpr h₂
+
+theorem in_rem_edges_not_in (g : Graph α) (edges : List (Edge α))
+    : ∀ e, e ∈ rem_edges g edges → e ∉ edges := by
+  intro e h₁ h₂; exact rem_edges_removes g edges e h₂ h₁
+
+theorem rem_edges_in_list_or_not_graph (g : Graph α) (edges : List (Edge α))
+    : ∀ e, e ∉ rem_edges g edges → e ∈ edges ∨ e ∉ g := by
+  intro e h₁
+  if e_in : e ∈ edges then exact Or.inl e_in else
+    apply Or.inr; intro h₂; apply h₁
+    exact rem_edges_pres_edges g edges e e_in |>.mp h₂
+
+theorem rem_edges_pres_vertex (g : Graph α) (edges : List (Edge α))
+    : ∀ u, has_vertex g u ↔ has_vertex (rem_edges g edges) u := by
+  intro u
+  induction edges <;> simp [rem_edges]
+  case cons x xs ih =>
+    simp [ih, rem_edge_pres_vertex (rem_edges g xs) u x.start x.finish]
 
 
 /- Function and theorems for getting all edges from a list of vertices -/
