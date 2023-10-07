@@ -73,7 +73,7 @@ class Digraph (α : Type) (T : (α : Type) → Type) where
 instance [Digraph α Graph] : Membership (Edge α) (Graph α) :=
   ⟨fun e g => Digraph.has_edge g e⟩
 
-class UndirectedGraph [Digraph α Graph] (g : Graph α) : Prop where
+structure UndirectedGraph [Digraph α Graph] (g : Graph α) : Prop where
   undirected : ∀ u v, Digraph.has_edge g ⟨u, v⟩ ↔ Digraph.has_edge g ⟨v, u⟩
 
 @[reducible] def Digraph.Oriented [Digraph α Graph] (g : Graph α) : Prop :=
@@ -588,6 +588,5 @@ def empty : UndirectedGraph (Digraph.empty : Graph α) :=
       have vu := Digraph.empty_edges (α:=α) (T := Graph) ⟨v, u⟩
       apply Iff.intro <;> (intro h; contradiction)
   ⟩
-
 
 end UndirectedGraph
