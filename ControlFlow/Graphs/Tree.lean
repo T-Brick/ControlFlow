@@ -1,5 +1,6 @@
 import ControlFlow.Path
 import ControlFlow.Graphs.DAG
+import ControlFlow.Graphs.UndirectedGraph
 
 namespace ControlFlow
 
@@ -33,9 +34,9 @@ abbrev DirectedTree : {g : Graph α} → DAG g → Type := Tree.Poly
 
 namespace Tree
 
--- theorem iff_acyclic_add_cycle {g : Graph α} (ug : UndirectedGraph g)
-    -- : Tree ug
-    -- ↔ UndirectedGraph.Acyclic ug
-      -- ∧ (∀ e, e ∉ g
-            -- → UndirectedGraph.Cyclic (UndirectedGraph.add_edge g e)) := by
-  -- sorry
+theorem iff_acyclic_add_cycle {g : Graph α} (ug : UndirectedGraph g)
+    : Tree ug
+    ↔ UndirectedGraph.Acyclic ug
+      ∧ (∀ e, e ∉ g
+            → UndirectedGraph.Cyclic (UndirectedGraph.add_edge ug e)) := by
+  sorry
