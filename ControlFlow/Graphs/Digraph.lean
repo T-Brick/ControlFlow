@@ -93,17 +93,8 @@ variable [Digraph α Graph] [DecidableEq α]
 
 namespace Digraph
 
-def Vertices (g : Graph α) := {v : α // has_vertex g v}
-
-instance {g : Graph α} : DecidableEq (Vertices g) :=
-  fun u v =>
-    match decEq u.val v.val with
-    | isFalse h₁ => isFalse (fun h₂ => h₁ (Subtype.val_inj.mpr h₂))
-    | isTrue  h₁ => isTrue (Subtype.eq h₁)
-
 theorem has_edge_membership (g : Graph α) (e : Edge α)
   : has_edge g e ↔ e ∈ g := by simp [Membership.mem]
-
 
 /- Additional theorems directly related to graph preservation -/
 
@@ -669,7 +660,44 @@ theorem reverse_toEdge_vertices_in_graph (g : Graph α)
   exact toEdges_vertices_in_graph _ ⟨v, u⟩ this w (Edge.mem_flip.mp h₂)
 
 
+/- Vertices type -/
+
+def Vertices (g : Graph α) := {v : α // has_vertex g v}
+
+instance {g : Graph α} : DecidableEq (Vertices g) :=
+  fun u v =>
+    match decEq u.val v.val with
+    | isFalse h₁ => isFalse (fun h₂ => h₁ (Subtype.val_inj.mpr h₂))
+    | isTrue  h₁ => isTrue (Subtype.eq h₁)
+
+instance {g : Graph α} {w : α}
+    : Coe (Vertices g) (Vertices (add_vertex g w)) where
+  coe v := ⟨v.val, add_vertex_pres_existing_vertex g v.val w v.property⟩
+
+instance {g : Graph α} {e : Edge α}
+    : Coe (Vertices g) (Vertices (add_edge g e)) where
+  coe v := ⟨v.val, add_edge_pres_existing_vertex g e v.val v.property⟩
+
+
 /- Misc utility functions -/
+
+@[reducible, simp] def trivial (v : α) : Graph α := add_vertex empty v
+
+theorem trivial_vertex_eq
+    : ∀ u v, has_vertex (trivial v : Graph α) u → u = v := by
+  intro u v h
+  if eq : u = v then exact eq else
+  have := add_vertex_pres_vertex (empty : Graph α) u v eq |>.mpr h
+    |> empty_vertex u
+  contradiction
+
+theorem trivial_no_edge (v : α)
+    : ∀ e, e ∉ (trivial v : Graph α) := by
+  intro e h₁
+  simp at h₁
+  exact add_vertex_pres_edges (empty : Graph α) v e
+    |> Iff.not |>.mp (empty_edges e) h₁
+
 
 nonrec def toString [ToString α] (g : Graph α) : String :=
   Digraph.toVertices g

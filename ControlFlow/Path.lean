@@ -1,6 +1,8 @@
 
 import ControlFlow.Graphs.Digraph
+import ControlFlow.Graphs.UndirectedGraph
 
+/- todo: reorganise this file -/
 namespace ControlFlow
 
 variable {Graph : (α : Type) → Type}
@@ -54,6 +56,14 @@ def merge_disjoint {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
 def length {g : Graph α} {u v : α} {ps : List α} (_ : g |= ps : u -> v) : Nat :=
   ps.length + 1
 
+theorem empty : ¬Path (empty : Graph α) u v ps := by
+  intro path; cases path
+  case edge h => exact Digraph.empty_edges ⟨u, v⟩ h
+  case cons w _ _ h _ => exact Digraph.empty_edges ⟨w, v⟩ h
+
+theorem Undirected.empty : ¬Undirected (Digraph.empty : Graph α) u v ps := by
+  intro upath; exact Path.empty upath.path
+
 theorem out_edges {g : Graph α} {u v w : α}
     (path₁ : g |= ps : u -> v)
     (h₁ : ⟨v, w⟩ ∈ out_edges g v)
@@ -91,6 +101,10 @@ theorem pred_merge {g : Graph α} {u v w : α}
     (h₂ : v ∉ ps)
     : g |= (ps ++ [v]) : u -> w := by
   exact Path.in_edges path₂ (pred_has_edge.mp h₁) h₂
+
+theorem pathlist_nonempty {g : Graph α} {u v : α} {ps : List α}
+    (path : g |= ps : u -> v) : ps ≠ [] := by
+  intro eq; cases path <;> contradiction
 
 theorem in_pathlist_in_graph {g : Graph α} {u v : α}
     (path : g |= nodes : v -> w) (h₁ : u ∈ nodes) : g |= u := by
@@ -186,6 +200,13 @@ def split {g : Graph α} {u v w : α} {ps : List α}
       . apply And.intro (by simp)
         exact And.intro path' (.edge h₃)
 
+def prior_vertex {g : Graph α} {u v : α} {ps : List α}
+    (path : g |= ps : u -> v) : α :=
+  match ps with
+  | []      => by have := pathlist_nonempty path; contradiction
+  | _ :: [] => u
+  | _ :: x :: _  => x
+
 structure Cyclic (g : Graph α) (u : α) (ps : List α) : Prop where
   cycle : g |= ps : u -> u
 
@@ -262,14 +283,35 @@ theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     apply Exists.elim (remove_cycle path₂ vw_eq); intro ps₂' acyclic₂
     sorry
 
--- todo: should this remain in this namespace??
+
+/- Persevation of paths throuhg graph changes -/
+
+theorem add_vertex_pres {g : Graph α} {u v : α} {ps : List α} (w : α)
+    (path : g |= ps : u -> v)
+    : add_vertex g w |= ps : u -> v := by
+  sorry
+instance {g : Graph α} : Coe (Path g u v ps) (Path (add_vertex g w) u v ps) :=
+  ⟨add_vertex_pres w⟩
+
+theorem add_edge_pres {g : Graph α} {u v : α} {ps : List α} (e : Edge α)
+    (path : g |= ps : u -> v)
+    : add_edge g e |= ps : u -> v := by
+  sorry
+instance {g : Graph α} : Coe (Path g u v ps) (Path (add_edge g e) u v ps) :=
+  ⟨add_edge_pres e⟩
+
+/- Reachability -/
+
+-- todo: should this remain in this namespace/file ??
 inductive Reachable (g : Graph α) : (u v : Vertices g) → Prop where
 | refl : Reachable g u u
 | path : (ps : List α)
        → (path : g |= ps : u -> v)
        → Reachable g ⟨u, start_in_graph path⟩ ⟨v, finish_in_graph path⟩
 
-theorem Reachable.trans {g : Graph α} {u v w : Vertices g}
+namespace Reachable
+
+theorem trans {g : Graph α} {u v w : Vertices g}
     (r₁ : Reachable g u v)
     (r₂ : Reachable g v w)
     : Reachable g u w := by
@@ -282,7 +324,7 @@ theorem Reachable.trans {g : Graph α} {u v w : Vertices g}
       apply Exists.elim (merge p₁ p₂); intro ps p
       exact .path ps p
 
-nonrec def Reachable.Vertices (g : Graph α) : Type := Vertices g
+nonrec def Vertices (g : Graph α) : Type := Vertices g
 
 instance {g : Graph α} : LE (Reachable.Vertices g) where
   le u v := Reachable g u v
@@ -291,6 +333,18 @@ instance {g : Graph α} : Preorder (Reachable.Vertices g) where
   le_refl u := .refl
   le_trans u v w := Reachable.trans
 
+
+theorem add_vertex_pres {g : Graph α} {u v : Digraph.Vertices g} (w : α)
+    (reach : Reachable g u v)
+    : Reachable (Digraph.add_vertex g w) u v := by
+  sorry
+
+theorem add_edge_pres {g : Graph α} {u v : Digraph.Vertices g} (e : Edge α)
+    (reach : Reachable g u v)
+    : Reachable (Digraph.add_edge g e) u v := by
+  sorry
+
+end Reachable
 end Path
 
 namespace Digraph
@@ -300,5 +354,38 @@ namespace Digraph
 -/
 
 -- todo: maybe use the `Vertices g` subtype
-@[reducible] def Connected (g : Graph α) : Prop :=
+@[reducible, simp] def Connected (g : Graph α) : Prop :=
   ∀ u v, (h₁ : g |= u) → (h₂ : g |= v) → Path.Reachable g ⟨u, h₁⟩ ⟨v, h₂⟩
+
+namespace Connected
+
+theorem empty : Connected (Digraph.empty : Graph α) := by
+  intro u _ h₁; have := Digraph.empty_vertex u h₁; contradiction
+
+theorem trivial (w : α)
+    : Connected (Digraph.trivial w : Graph α) := by
+  intro u v h₁ h₂
+  have eq_uw := Digraph.trivial_vertex_eq u w h₁
+  have eq_vw := Digraph.trivial_vertex_eq v w h₂
+  simp [*]
+  exact .refl
+
+def add_vertex_start {g : Graph α} (connected : Connected g) (e : Edge α)
+    (h₁ : has_vertex g e.start)
+    : Connected (Digraph.add_undirected_edge g e) := by
+  if h₂ : has_vertex g e.finish then
+    have h₃ := add_undirected_edge_pres_existing_vertex g e e.start h₁
+    have h₄ := add_undirected_edge_pres_existing_vertex g e e.finish h₂
+    have := connected e.start e.finish
+    sorry
+  else
+    intro u v u_in v_in
+    simp [Path.Reachable]
+    sorry
+
+def add_vertex_finish {g : Graph α} (connected : Connected g) (e : Edge α)
+    (h₁ : has_vertex g e.finish)
+    : Connected (Digraph.add_undirected_edge g e) := by
+  sorry
+
+end Connected

@@ -9,9 +9,6 @@ open CFG
 variable {Graph : (α : Type) → Type}
 variable [Digraph α Graph] [DecidableEq α]
 
-/-
-  maybe we should make a specific graph with an entry node?
- -/
 structure Dom (g : Graph α) (e v₁ v₂ : Vertices g) : Prop where
   reach : Path.Reachable g e v₂
   in_path : (∀ ps, (g |= ps : e.val -> v₂.val) → v₁.val ∈ ps)
@@ -147,7 +144,6 @@ theorem Strict.cfg_trans {cfg : CFG α Graph} {v₁ v₂ v₃ : Vertices cfg.dig
     : cfg.digraph(cfg.start) |= v₁ ≫ v₃ :=
   Strict.trans d₁ d₂
 
--- does this require classical reasoning?
 theorem total {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : Vertices g}
     (h₁ : g(e) |= v₁ ≫= v₃)
     (h₂ : g(e) |= v₂ ≫= v₃)
