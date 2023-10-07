@@ -563,6 +563,50 @@ def add_vertices (g : Graph α) : List α → Graph α
   | [] => g
   | v :: vs => add_vertex (add_vertices g vs) v
 
+theorem add_vertices_adds (g : Graph α) (vertices : List α)
+    : ∀ v ∈ vertices, has_vertex (add_vertices g vertices) v := by
+  intro v h₁
+  induction vertices <;> simp [add_vertices]
+  case nil => contradiction
+  case cons x xs ih =>
+    cases h₁
+    case head => exact add_vertex_adds _ v
+    case tail h₁ => exact add_vertex_pres_existing_vertex _ v x (ih h₁)
+
+theorem add_vertices_pres_edges (g : Graph α) (vertices : List α)
+    : ∀ e, e ∈ g ↔ has_edge (add_vertices g vertices) e := by
+  intro e
+  induction vertices <;> simp [add_vertices]
+  case nil => simp [has_edge_membership]
+  case cons x xs ih =>
+    simp [ih, add_vertex_pres_edges (add_vertices g xs) x e]
+
+theorem add_vertices_pres_vertex (g : Graph α) (vertices : List α)
+    : ∀ v, v ∉ vertices
+         → (has_vertex g v ↔ has_vertex (add_vertices g vertices) v) := by
+  intro v h₁
+  induction vertices <;> simp [add_vertices]
+  case cons x xs ih =>
+    if eq : v = x then simp [eq] at h₁ else
+      rw [ ih (List.not_mem_of_not_mem_cons h₁)
+         , add_vertex_pres_vertex _ v x eq
+         ]
+
+theorem add_vertices_pres_existing_vertex (g : Graph α) (vertices : List α)
+    : ∀ v, has_vertex g v → has_vertex (add_vertices g vertices) v := by
+  intro v h₁
+  induction vertices <;> simp [add_vertices]
+  case nil => exact h₁
+  case cons x xs ih => exact add_vertex_pres_existing_vertex _ v x ih
+
+theorem add_vertices_in_list_or_graph (g : Graph α) (vertices : List α)
+    : ∀ v, has_vertex (add_vertices g vertices) v
+         → v ∈ vertices ∨ has_vertex g v := by
+  intro v h₁
+  if v_in : v ∈ vertices
+  then exact Or.inl v_in
+  else apply Or.inr; exact add_vertices_pres_vertex g vertices v v_in |>.mpr h₁
+
 
 /- Function and theorems for removing lists of vertices from a graph -/
 
