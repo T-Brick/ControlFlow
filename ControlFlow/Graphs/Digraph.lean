@@ -16,11 +16,23 @@ instance : Coe (α × α) (Edge α) where coe e := ⟨e.fst, e.snd⟩
 def Edge.elem (v : α) (e : Edge α) : Bool := v = e.start || v = e.finish
 instance : Membership α (Edge α) where mem v e := Edge.elem v e
 
-@[reducible, simp] def Edge.flip (e : Edge α) : Edge α := ⟨e.finish, e.start⟩
-
 @[simp] theorem Edge.elem_iff [DecidableEq α] {v : α} {e : Edge α}
     : Edge.elem v e = true ↔ v ∈ e :=
   ⟨by simp [Membership.mem], by simp [Membership.mem]⟩
+
+@[reducible, simp] def Edge.flip (e : Edge α) : Edge α := ⟨e.finish, e.start⟩
+
+@[simp] theorem Edge.flip_flip (e : Edge α) : e.flip.flip = e := by simp
+
+@[simp] theorem Edge.flip_symm {e₁ e₂ : Edge α}
+    : e₁.flip = e₂ ↔ e₁ = e₂.flip := by
+  sorry
+
+@[simp] theorem Edge.flip_inj (e₁ e₂ : Edge α)
+    : e₁.flip = e₂.flip → e₁ = e₂ := by
+  intro h
+  simp [flip] at h
+  sorry
 
 @[simp] theorem Edge.mem_flip {w : α} {e: Edge α} : w ∈ e.flip ↔ w ∈ e := by
   simp [←Edge.elem_iff, elem]
@@ -858,5 +870,82 @@ def empty : UndirectedGraph (Digraph.empty : Graph α) :=
       have vu := Digraph.empty_edges (α:=α) (T := Graph) ⟨v, u⟩
       apply Iff.intro <;> (intro h; contradiction)
   ⟩
+
+def add_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
+    : UndirectedGraph (Digraph.add_undirected_edge g e) :=
+  ⟨by intro u v
+      if eq_uv : e = ⟨u, v⟩ then
+        have := Digraph.add_undirected_edge_adds g ⟨u, v⟩
+        simp [eq_uv] at *
+        apply Iff.intro <;> intro _h
+        . exact this.right
+        . exact this.left
+      else if eq_vu : e = ⟨v, u⟩ then
+        have := Digraph.add_undirected_edge_adds g ⟨v, u⟩
+        simp [eq_vu] at *
+        apply Iff.intro <;> intro _h
+        . exact this.left
+        . exact this.right
+      else
+        have pres := Digraph.add_undirected_edge_pres_edges g
+        have h₁ := pres ⟨u, v⟩ e (neq_symm eq_uv) (fun h => by
+          have := Edge.flip_symm.mp (Eq.symm h); simp at this; exact eq_vu this)
+        have h₂ := pres ⟨v, u⟩ e (neq_symm eq_vu) (fun h => by
+          have := Edge.flip_symm.mp (Eq.symm h); simp at this; exact eq_uv this)
+        rw [←h₁, ←h₂, ug.undirected u v]
+  ⟩
+
+def rem_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
+    : UndirectedGraph (Digraph.rem_undirected_edge g e) :=
+  ⟨by intro u v
+      if eq_uv : e = ⟨u, v⟩ then
+        have := Digraph.rem_undirected_edge_removes g ⟨u, v⟩
+        simp only [Edge.flip, eq_uv] at *
+        apply Iff.intro <;> intro h
+        . have := this.left h; contradiction
+        . have := this.right h; contradiction
+      else if eq_vu : e = ⟨v, u⟩ then
+        have := Digraph.rem_undirected_edge_removes g ⟨v, u⟩
+        simp only [Edge.flip, eq_vu] at *
+        apply Iff.intro <;> intro h
+        . have := this.right h; contradiction
+        . have := this.left h; contradiction
+      else
+        have pres := Digraph.rem_undirected_edge_pres_edges g
+        have h₁ := pres ⟨u, v⟩ e (neq_symm eq_uv) (fun h => by
+          have := Edge.flip_symm.mp (Eq.symm h); simp at this; exact eq_vu this)
+        have h₂ := pres ⟨v, u⟩ e (neq_symm eq_vu) (fun h => by
+          have := Edge.flip_symm.mp (Eq.symm h); simp at this; exact eq_uv this)
+        rw [←h₁, ←h₂, ug.undirected u v]
+  ⟩
+
+def add_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
+    : UndirectedGraph (Digraph.add_vertex g w) :=
+  ⟨by intro u v
+      have pres := Digraph.add_vertex_pres_edges g w
+      rw [←pres ⟨u, v⟩, ←pres ⟨v, u⟩]
+      exact ug.undirected u v
+  ⟩
+
+def rem_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
+    : UndirectedGraph (Digraph.rem_vertex g w) :=
+  ⟨by intro u v
+      have := Digraph.rem_vertex_removes_edge g
+      if eq_u : w = u then
+        simp only [Edge.flip, eq_u] at *
+        apply Iff.intro <;> intro h
+        . have := (this v u).right h; contradiction
+        . have := (this v u).left h; contradiction
+      else if eq_v : w = v then
+        simp only [Edge.flip, eq_v] at *
+        apply Iff.intro <;> intro h
+        . have := (this u v).left h; contradiction
+        . have := (this u v).right h; contradiction
+      else
+        have pres := Digraph.rem_vertex_pres_edges g w
+        rw [←pres u v eq_u eq_v, ←pres v u eq_v eq_u]
+        exact ug.undirected u v
+  ⟩
+
 
 end UndirectedGraph
