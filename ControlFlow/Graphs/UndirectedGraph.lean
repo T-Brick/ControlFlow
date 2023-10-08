@@ -61,6 +61,33 @@ theorem add_undirected_edge_pres_existing_vertex (g : Graph α)
   apply add_edge_pres_existing_vertex _ _ _
   exact add_edge_pres_existing_vertex _ _ _ h
 
+theorem add_undirected_edge_in_in_pres_vertices (g : Graph α) (e : Edge α)
+    (start_in : has_vertex g e.start)
+    (finish_in : has_vertex g e.finish)
+    : ∀ v, has_vertex g v ↔ has_vertex (add_undirected_edge g e) v := by
+  intro v; apply Iff.intro
+  . exact add_undirected_edge_pres_existing_vertex g e v
+  . intro h₁
+    if eq_s : v = e.start then simp [eq_s]; exact start_in else
+    if eq_f : v = e.finish then simp [eq_f]; exact finish_in else
+    exact add_undirected_edge_pres_vertex g v _ _ eq_s eq_f |>.mpr h₁
+
+theorem add_undirected_edge_in_out_pres_vertices (g : Graph α) (e : Edge α)
+    (start_in : has_vertex g e.start)
+    : ∀ v, v ≠ e.finish → has_vertex (add_undirected_edge g e) v
+                        → has_vertex g v := by
+  intro v neq_f h₁
+  if eq_s : v = e.start then simp [eq_s]; exact start_in else
+  exact add_undirected_edge_pres_vertex g _ _ _ eq_s neq_f |>.mpr h₁
+
+theorem add_undirected_edge_out_in_pres_vertices (g : Graph α) (e : Edge α)
+    (finish_in : has_vertex g e.finish)
+    : ∀ v, v ≠ e.start → has_vertex (add_undirected_edge g e) v
+                       → has_vertex g v := by
+  intro v neq_s h₁
+  if eq_f : v = e.finish then simp [eq_f]; exact finish_in else
+  exact add_undirected_edge_pres_vertex g _ _ _ neq_s eq_f |>.mpr h₁
+
 
 /- Function and theorems for removing undirected edges -/
 
@@ -173,6 +200,24 @@ theorem undirect_pres_vertex (g : Graph α)
 
 theorem undirect_pres_edge (g : Graph α) : ∀ e ∈ g, e ∈ (undirect g).fst := by
   intro e h₁; simp [undirect]; exact add_edges_pres_existing_edge g _ e h₁
+
+
+/- Coercions for various graph operations -/
+
+instance {g : Graph α} {e₁ e₂ : Edge α}
+    : Coe (e₁ ∈ g) (e₁ ∈ add_undirected_edge g e₂) :=
+  ⟨add_undirected_edge_pres_existing_edge g e₁ e₂⟩
+
+instance {g : Graph α} {e : Edge α} {v : α}
+    : Coe (has_vertex g v) (has_vertex (add_undirected_edge g e) v) :=
+  ⟨add_undirected_edge_pres_existing_vertex g e v⟩
+
+instance {g : Graph α} {e : Edge α}
+    : Coe (Vertices g) (Vertices (add_undirected_edge g e)) where
+  coe v := ⟨ v.val
+           , add_undirected_edge_pres_existing_vertex g e v.val v.property
+           ⟩
+
 
 end Digraph
 

@@ -58,7 +58,10 @@ def add_branch {g : Graph α} (tree : Tree g) (e : Edge α)
     (start_in : Digraph.has_vertex g e.start)
     (finish_out : ¬Digraph.has_vertex g e.finish)
     : Tree (Digraph.add_undirected_edge g e) :=
-  sorry
+  { undirected := UndirectedGraph.add_edge tree.undirected e
+  , connected  := Digraph.Connected.add_vertex_start tree.connected e start_in
+  , acyclic    := sorry
+  }
 
 def add_branch' {g : Graph α} (tree : Tree g) (e : Edge α)
     (start_out : ¬Digraph.has_vertex g e.start)

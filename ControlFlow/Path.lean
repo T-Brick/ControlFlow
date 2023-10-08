@@ -284,25 +284,47 @@ theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     sorry
 
 
-/- Persevation of paths throuhg graph changes -/
+/- Persevation of paths through graph changes -/
 
 theorem add_vertex_pres {g : Graph α} {u v : α} {ps : List α} (w : α)
     (path : g |= ps : u -> v)
     : add_vertex g w |= ps : u -> v := by
-  sorry
-instance {g : Graph α} : Coe (Path g u v ps) (Path (add_vertex g w) u v ps) :=
-  ⟨add_vertex_pres w⟩
+  cases path
+  case edge h => exact .edge h
+  case cons path' h₁ h₂ => exact .cons h₁ (add_vertex_pres w path') h₂
 
 theorem add_edge_pres {g : Graph α} {u v : α} {ps : List α} (e : Edge α)
     (path : g |= ps : u -> v)
     : add_edge g e |= ps : u -> v := by
-  sorry
+  cases path
+  case edge h => exact .edge h
+  case cons path' h₁ h₂ => exact .cons h₁ (add_edge_pres e path') h₂
+
+theorem add_undirected_edge_pres {g : Graph α} {u v : α} {ps : List α}
+    (e : Edge α)
+    (path : g |= ps : u -> v)
+    : add_undirected_edge g e |= ps : u -> v := by
+  cases path
+  case edge h => exact .edge h
+  case cons path' h₁ h₂ => exact .cons h₁ (add_undirected_edge_pres e path') h₂
+
+
+/- Coercions for graphs -/
+
+instance {g : Graph α} : Coe (Path g u v ps) (Path (add_vertex g w) u v ps) :=
+  ⟨add_vertex_pres w⟩
+
 instance {g : Graph α} : Coe (Path g u v ps) (Path (add_edge g e) u v ps) :=
   ⟨add_edge_pres e⟩
 
-/- Reachability -/
+instance {g : Graph α}
+    : Coe (Path g u v ps) (Path (add_undirected_edge g e) u v ps) :=
+  ⟨add_undirected_edge_pres e⟩
 
+
+/- Reachability -/
 -- todo: should this remain in this namespace/file ??
+
 inductive Reachable (g : Graph α) : (u v : Vertices g) → Prop where
 | refl : Reachable g u u
 | path : (ps : List α)
@@ -333,16 +355,59 @@ instance {g : Graph α} : Preorder (Reachable.Vertices g) where
   le_refl u := .refl
   le_trans u v w := Reachable.trans
 
+def edge {g : Graph α} {u v : Vertices g} (uv_in : ⟨u.val, v.val⟩ ∈ g)
+    : Reachable g u v := .path [v.val] (Path.edge uv_in)
+
+def edge' {g : Graph α} {e : Edge α} (e_in : e ∈ g)
+    :  (s_in : has_vertex g e.start)
+    ×' (f_in : has_vertex g e.finish)
+    ×' Reachable g ⟨e.start, s_in⟩ ⟨e.finish, f_in⟩ :=
+  let evs_in := edge_vertices g e.start e.finish e_in
+  let u : Vertices g := ⟨e.start, evs_in.left⟩
+  let v : Vertices g := ⟨e.finish, evs_in.right⟩
+  let uv_in : ⟨u.val, v.val⟩ ∈ g := by simp [*]; exact e_in
+  ⟨evs_in.left, evs_in.right, edge uv_in⟩
+
+
+/- Preservation properties for graphs -/
 
 theorem add_vertex_pres {g : Graph α} {u v : Digraph.Vertices g} (w : α)
     (reach : Reachable g u v)
     : Reachable (Digraph.add_vertex g w) u v := by
-  sorry
+  cases reach
+  case refl => exact .refl
+  case path ps path => exact Reachable.path ps (Path.add_vertex_pres w path)
 
 theorem add_edge_pres {g : Graph α} {u v : Digraph.Vertices g} (e : Edge α)
     (reach : Reachable g u v)
     : Reachable (Digraph.add_edge g e) u v := by
-  sorry
+  cases reach
+  case refl => exact .refl
+  case path ps path => exact Reachable.path ps (Path.add_edge_pres e path)
+
+theorem add_undirected_edge_pres {g : Graph α} {u v : Digraph.Vertices g}
+    (e : Edge α)
+    (reach : Reachable g u v)
+    : Reachable (Digraph.add_undirected_edge g e) u v := by
+  cases reach
+  case refl => exact .refl
+  case path ps path =>
+    exact Reachable.path ps (Path.add_undirected_edge_pres e path)
+
+
+/- Coercions for preservation -/
+
+instance {g : Graph α} {u v : Digraph.Vertices g} {w : α}
+    : Coe (Reachable g u v) (Reachable (Digraph.add_vertex g w) u v) :=
+  ⟨add_vertex_pres w⟩
+
+instance {g : Graph α} {u v : Digraph.Vertices g} {e : Edge α}
+    : Coe (Reachable g u v) (Reachable (Digraph.add_edge g e) u v) :=
+  ⟨add_edge_pres e⟩
+
+instance {g : Graph α} {u v : Digraph.Vertices g} {e : Edge α}
+    : Coe (Reachable g u v) (Reachable (Digraph.add_undirected_edge g e) u v) :=
+  ⟨add_undirected_edge_pres e⟩
 
 end Reachable
 end Path
@@ -370,18 +435,47 @@ theorem trivial (w : α)
   simp [*]
   exact .refl
 
-def add_vertex_start {g : Graph α} (connected : Connected g) (e : Edge α)
+def add_edge {g : Graph α} (connected : Connected g) (e : Edge α)
     (h₁ : has_vertex g e.start)
+    (h₂ : has_vertex g e.finish)
     : Connected (Digraph.add_undirected_edge g e) := by
-  if h₂ : has_vertex g e.finish then
-    have h₃ := add_undirected_edge_pres_existing_vertex g e e.start h₁
-    have h₄ := add_undirected_edge_pres_existing_vertex g e e.finish h₂
-    have := connected e.start e.finish
-    sorry
+  intro u v u_in v_in
+  have node_in := Digraph.add_undirected_edge_in_in_pres_vertices g e h₁ h₂
+  have u_in' := node_in u |>.mpr u_in
+  have v_in' := node_in v |>.mpr v_in
+  exact Path.Reachable.add_undirected_edge_pres e (connected u v u_in' v_in')
+
+def add_vertex_start {g : Graph α} (connected : Connected g) (e : Edge α)
+    (start_in : has_vertex g e.start)
+    : Connected (Digraph.add_undirected_edge g e) := by
+  if h₁ : has_vertex g e.finish then exact add_edge connected e start_in h₁ else
+  intro u v u_in v_in
+
+  have e_in : ⟨e.start, e.finish⟩ ∈ Digraph.add_undirected_edge g e :=
+    Digraph.add_undirected_edge_adds g e |>.left
+  have rev_e_in : ⟨e.finish, e.start⟩ ∈ Digraph.add_undirected_edge g e :=
+    Digraph.add_undirected_edge_adds g e |>.right
+
+  if eq_uf : u = e.finish then
+    simp [eq_uf]
+    if eq_vf : v = e.finish then simp [eq_vf]; exact .refl else
+    have v_in' :=
+      Digraph.add_undirected_edge_in_out_pres_vertices g e start_in v eq_vf v_in
+    apply Path.Reachable.trans (Path.Reachable.edge' rev_e_in |>.snd.snd)
+    exact connected e.start v start_in v_in'
+       |> Path.Reachable.add_undirected_edge_pres e
+  else if eq_vf : v = e.finish then
+    simp [eq_vf]
+    have u_in' :=
+      Digraph.add_undirected_edge_in_out_pres_vertices g e start_in u eq_uf u_in
+    apply Path.Reachable.trans
+    exact connected u e.start u_in' start_in
+       |> Path.Reachable.add_undirected_edge_pres e
+    exact Path.Reachable.edge' e_in |>.snd.snd
   else
-    intro u v u_in v_in
-    simp [Path.Reachable]
-    sorry
+    have is_in' := Digraph.add_undirected_edge_in_out_pres_vertices g e start_in
+    exact connected u v (is_in' u eq_uf u_in) (is_in' v eq_vf v_in)
+       |> Path.Reachable.add_undirected_edge_pres e
 
 def add_vertex_finish {g : Graph α} (connected : Connected g) (e : Edge α)
     (h₁ : has_vertex g e.finish)

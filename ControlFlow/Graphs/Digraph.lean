@@ -123,6 +123,31 @@ theorem add_edge_eq_or_in (g : Graph α)
   then exact Or.inl eq
   else apply Or.inr; exact add_edge_pres_edges g e₁ e₂ eq |>.mpr h₁
 
+theorem add_edge_in_in_pres_vertices (g : Graph α) (e : Edge α)
+    (start_in : has_vertex g e.start)
+    (finish_in : has_vertex g e.finish)
+    : ∀ v, has_vertex g v ↔ has_vertex (add_edge g e) v := by
+  intro v; apply Iff.intro
+  . exact add_edge_pres_existing_vertex g e v
+  . intro h₁
+    if eq_s : v = e.start then simp [eq_s]; exact start_in else
+    if eq_f : v = e.finish then simp [eq_f]; exact finish_in else
+    exact add_edge_pres_vertex g v _ _ eq_s eq_f |>.mpr h₁
+
+theorem add_edge_in_out_pres_vertices (g : Graph α) (e : Edge α)
+    (start_in : has_vertex g e.start)
+    : ∀ v, v ≠ e.finish → has_vertex (add_edge g e) v → has_vertex g v := by
+  intro v neq_f h₁
+  if eq_s : v = e.start then simp [eq_s]; exact start_in else
+  exact add_edge_pres_vertex g _ _ _ eq_s neq_f |>.mpr h₁
+
+theorem add_edge_out_in_pres_vertices (g : Graph α) (e : Edge α)
+    (finish_in : has_vertex g e.finish)
+    : ∀ v, v ≠ e.start → has_vertex (add_edge g e) v → has_vertex g v := by
+  intro v neq_s h₁
+  if eq_f : v = e.finish then simp [eq_f]; exact finish_in else
+  exact add_edge_pres_vertex g _ _ _ neq_s eq_f |>.mpr h₁
+
 theorem add_vertex_pres_existing_vertex (g : Graph α)
     : ∀ v₁ v₂, has_vertex g v₁ → has_vertex (add_vertex g v₂) v₁ := by
   intro v₁ v₂ h₁
@@ -677,6 +702,25 @@ instance {g : Graph α} {w : α}
 instance {g : Graph α} {e : Edge α}
     : Coe (Vertices g) (Vertices (add_edge g e)) where
   coe v := ⟨v.val, add_edge_pres_existing_vertex g e v.val v.property⟩
+
+
+/- Coercions for various graph operations -/
+
+instance {g : Graph α} {e₁ e₂ : Edge α}
+    : Coe (e₁ ∈ g) (e₁ ∈ add_edge g e₂) :=
+  ⟨add_edge_pres_existing_edge g e₁ e₂⟩
+
+instance {g : Graph α} {e : Edge α} {v : α}
+    : Coe (has_vertex g v) (has_vertex (add_edge g e) v) :=
+  ⟨add_edge_pres_existing_vertex g e v⟩
+
+instance {g : Graph α } {e : Edge α} {v : α}
+    : Coe (e ∈ g) (e ∈ add_vertex g v) :=
+  ⟨add_vertex_pres_edges g v e |>.mp⟩
+
+instance {g : Graph α} {v₁ v₂ : α}
+    : Coe (has_vertex g v₁) (has_vertex (add_vertex g v₂) v₁) :=
+  ⟨add_vertex_pres_existing_vertex g v₁ v₂⟩
 
 
 /- Misc utility functions -/
