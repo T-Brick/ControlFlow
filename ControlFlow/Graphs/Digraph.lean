@@ -148,6 +148,39 @@ theorem add_edge_out_in_pres_vertices (g : Graph α) (e : Edge α)
   if eq_f : v = e.finish then simp [eq_f]; exact finish_in else
   exact add_edge_pres_vertex g _ _ _ neq_s eq_f |>.mpr h₁
 
+theorem add_edge_new_start_antisymm (g : Graph α) (u : α)
+    (u_not_in : ¬has_vertex g u)
+    : ∀ v w, ⟨u, w⟩ ∈ add_edge g ⟨u, v⟩ → v = w := by
+  intro v w e_in
+  apply Or.elim (add_edge_eq_or_in g ⟨u, w⟩ ⟨u, v⟩ e_in) <;> intro h₁
+  . exact Edge.mk.inj h₁ |>.right |>.symm
+  . have := edge_vertices g u w h₁ |>.left |> u_not_in
+    contradiction
+
+theorem add_edge_new_finish_antisymm (g : Graph α) (u : α)
+    (u_not_in : ¬has_vertex g u)
+    : ∀ v w, ⟨w, u⟩ ∈ add_edge g ⟨v, u⟩ → v = w := by
+  intro v w e_in
+  apply Or.elim (add_edge_eq_or_in g ⟨w, u⟩ ⟨v, u⟩ e_in) <;> intro h₁
+  . exact Edge.mk.inj h₁ |>.left |>.symm
+  . have := edge_vertices g w u h₁ |>.right |> u_not_in
+    contradiction
+
+theorem add_edge_new_start_no_in_edge (g : Graph α) (u : α)
+    (u_not_in : ¬has_vertex g u)
+    : ∀ v w, u ≠ v → ⟨w, u⟩ ∉ add_edge g ⟨u, v⟩ := by
+  intro v w uv_neq wu_in
+  exact add_edge_pres_edges g ⟨w, u⟩ ⟨u, v⟩ (by simp; intro _; exact uv_neq)
+    |>.mpr wu_in |> edge_vertices g w u |>.right |> u_not_in
+
+theorem add_edge_new_finish_no_out_edge (g : Graph α) (u : α)
+    (u_not_in : ¬has_vertex g u)
+    : ∀ v w, u ≠ v → ⟨u, w⟩ ∉ add_edge g ⟨v, u⟩ := by
+  intro v w uv_neq uw_in
+  exact add_edge_pres_edges g ⟨u, w⟩ ⟨v, u⟩
+    (by simp; intro eq; have := uv_neq eq; contradiction)
+    |>.mpr uw_in |> edge_vertices g u w |>.left |> u_not_in
+
 theorem add_vertex_pres_existing_vertex (g : Graph α)
     : ∀ v₁ v₂, has_vertex g v₁ → has_vertex (add_vertex g v₂) v₁ := by
   intro v₁ v₂ h₁
@@ -161,6 +194,16 @@ theorem add_vertex_eq_or_in (g : Graph α)
   if eq : v₁ = v₂
   then exact Or.inl eq
   else apply Or.inr; exact add_vertex_pres_vertex g v₁ v₂ eq |>.mpr h₁
+
+theorem add_vertex_no_edges (g : Graph α)
+    : ∀ u, ¬has_vertex g u → ∀ v, ⟨u, v⟩ ∉ add_vertex g u
+                                ∧ ⟨v, u⟩ ∉ add_vertex g u := by
+  intro u u_not_in v
+  apply And.intro <;> intro e_in
+  . exact add_vertex_pres_edges g u _ |>.mpr e_in
+      |> edge_vertices g _ _ |>.left |> u_not_in
+  . exact add_vertex_pres_edges g u _ |>.mpr e_in
+      |> edge_vertices g _ _ |>.right |> u_not_in
 
 theorem rem_edge_pres_nonexisting_edge (g : Graph α)
     : ∀ e₁ e₂, e₁ ∉ g → e₁ ∉ rem_edge g e₂ := by
@@ -261,6 +304,10 @@ theorem succ_in_graph {g : Graph α} {u v : α}
     (h : v ∈ succ g u) : has_vertex g v :=
   (succ_edge_in_graph.mp h) |> (edge_vertices g u v) |>.right
 
+theorem no_edge_no_succ {g : Graph α}
+    : ∀ u, (∀ v, ⟨u, v⟩ ∉ g) → (∀ v, v ∉ succ g u) := by
+  intro u e_not_in v v_in_s; exact e_not_in v (succ_edge_in_graph.mp v_in_s)
+
 
 /- Predecessor theorems -/
 
@@ -283,6 +330,10 @@ theorem pred_edge_in_graph {g : Graph α} {u v : α}
 theorem pred_in_graph {g : Graph α} {u v : α}
     (h : u ∈ pred g v) : has_vertex g u :=
   (pred_edge_in_graph.mp h) |> (edge_vertices g u v) |>.left
+
+theorem no_edge_no_pred {g : Graph α}
+    : ∀ u, (∀ v, ⟨v, u⟩ ∉ g) → (∀ v, v ∉ pred g u) := by
+  intro u e_not_in v v_in_s; exact e_not_in v (pred_edge_in_graph.mp v_in_s)
 
 
 theorem in_succ_iff_in_pred {g : Graph α} {u v : α}

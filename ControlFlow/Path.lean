@@ -284,6 +284,73 @@ theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     sorry
 
 
+theorem no_edge_no_path_from {g : Graph α} {u : α}
+    : ∀ v, ¬has_vertex g u → ¬∃ ps, g |= ps : u -> v := by
+  intro v h₁ h₂
+  apply Exists.elim h₂; intro ps path
+  induction path
+  case edge w h => exact Digraph.edge_vertices g _ _ h |>.left |> h₁
+  case cons v' ps' w _ path' _ ih => exact ih (Exists.intro ps' path')
+
+theorem no_edge_no_path_to {g : Graph α} {u : α}
+    : ∀ v, ¬has_vertex g u → ¬∃ ps, g |= ps : v -> u := by
+  intro v h₁ h₂
+  apply Exists.elim h₂; intro ps path
+  cases path
+  case edge h => exact Digraph.edge_vertices g _ _ h |>.right |> h₁
+  case cons w ps path' h h₄ =>
+    exact Digraph.edge_vertices g _ _ h |>.right |> h₁
+
+theorem no_succ_no_path {g : Graph α} {u : α}
+    : ∀ v, (∀ w, w ∉ Digraph.succ g u) → ¬∃ ps, g |= ps : u -> v := by
+  intro v h₁ h₂
+  apply Exists.elim h₂; intro ps path
+  induction path
+  case edge h => have := Digraph.succ_edge_in_graph.mpr h; simp [h₁] at this
+  case cons v' ps' w _ path' _ ih => exact ih (Exists.intro ps' path')
+
+theorem no_pred_no_path {g : Graph α} {u : α}
+    : ∀ v, (∀ w, w ∉ Digraph.pred g u) → ¬∃ ps, g |= ps : v -> u := by
+  intro v h₁ h₂
+  apply Exists.elim h₂; intro ps path
+  cases path
+  case edge h => have := Digraph.pred_edge_in_graph.mpr h; simp [h₁] at this
+  case cons w ps path' h h₄ =>
+    have := Digraph.pred_edge_in_graph.mpr h
+    simp [h₁] at this
+
+theorem add_vertex_no_path {g : Graph α} {u : α}
+    : ¬has_vertex g u → ∀ v, (¬∃ ps, (add_vertex g u) |= ps : u -> v)
+                           ∧ (¬∃ ps, (add_vertex g u) |= ps : v -> u) := by
+  intro u_not_in v
+  have e_not_in := add_vertex_no_edges g u u_not_in
+  apply And.intro <;> (intro h₁; apply Exists.elim h₁; intro ps path)
+  . apply Digraph.no_edge_no_succ u (e_not_in · |>.left) |> no_succ_no_path v
+    exact Exists.intro ps path
+  . apply Digraph.no_edge_no_pred u (e_not_in · |>.right) |> no_pred_no_path v
+    exact Exists.intro ps path
+
+theorem add_edge_new_start_from_must_use {g : Graph α} {u v : α}
+    (u_not_in : ¬has_vertex g u)
+    : ∀ w ps, add_edge g ⟨u, v⟩ |= ps : u -> w → v ∈ ps := by
+  intro w ps path
+  induction path
+  case edge v' h =>
+    simp; exact Digraph.add_edge_new_start_antisymm g u u_not_in v v' h
+  case cons ih => simp; apply Or.inr ih
+
+theorem add_edge_new_start_no_cycle {g : Graph α} {u v : α}
+    (u_not_in : ¬has_vertex g u)
+    (neq : u ≠ v)
+    : ¬∃ ps, add_edge g ⟨u, v⟩ |= ps : u -> u := by
+  intro h₁; apply Exists.elim h₁; intro ps path
+  cases path
+  case edge h =>
+    exact Digraph.add_edge_new_start_antisymm g u u_not_in _ _ h |>.symm |> neq
+  case cons w ps path h₁ h₂ =>
+    exact Digraph.add_edge_new_start_no_in_edge g u u_not_in v w neq h₁
+
+
 /- Persevation of paths through graph changes -/
 
 theorem add_vertex_pres {g : Graph α} {u v : α} {ps : List α} (w : α)
@@ -309,7 +376,7 @@ theorem add_undirected_edge_pres {g : Graph α} {u v : α} {ps : List α}
   case cons path' h₁ h₂ => exact .cons h₁ (add_undirected_edge_pres e path') h₂
 
 
-/- Coercions for graphs -/
+/- Coercions for path preservations -/
 
 instance {g : Graph α} : Coe (Path g u v ps) (Path (add_vertex g w) u v ps) :=
   ⟨add_vertex_pres w⟩
