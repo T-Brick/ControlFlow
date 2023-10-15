@@ -88,6 +88,61 @@ theorem add_undirected_edge_out_in_pres_vertices (g : Graph α) (e : Edge α)
   if eq_f : v = e.finish then simp [eq_f]; exact finish_in else
   exact add_undirected_edge_pres_vertex g _ _ _ neq_s eq_f |>.mpr h₁
 
+theorem add_undirected_edge_new_start_antisymm (g : Graph α) (u : α)
+    (u_not_in : ¬has_vertex g u)
+    : ∀ v w, ( ⟨w, u⟩ ∈ add_undirected_edge g ⟨u, v⟩
+             ∨ ⟨u, w⟩ ∈ add_undirected_edge g ⟨u, v⟩
+             ) → v = w := by
+  intro v w e_in
+  apply Or.elim e_in <;> (
+    intro e_in
+    apply Or.elim (add_undirected_edge_eq_or_in g _ _ e_in) <;> intro h₁ )
+  . apply Or.elim h₁ <;> intro h₁
+    . simp at h₁; simp [←h₁.left] at h₁; exact Eq.symm h₁
+    . have := Edge.mk.inj h₁; simp [←this.right] at this; exact Eq.symm this
+  . have := edge_vertices g _ _ h₁ |>.right |> u_not_in; contradiction
+  . apply Or.elim h₁ <;> intro h₁
+    . have := Edge.mk.inj h₁; simp [this.left] at this; exact Eq.symm this
+    . simp at h₁; simp [h₁.left] at h₁; exact Eq.symm h₁
+  . have := edge_vertices g _ _ h₁ |>.left |> u_not_in; contradiction
+
+theorem add_undirected_edge_new_finish_from_antisymm (g : Graph α) (u : α)
+    (u_not_in : ¬has_vertex g u)
+    : ∀ v w, ( ⟨w, u⟩ ∈ add_undirected_edge g ⟨v, u⟩
+             ∨ ⟨u, w⟩ ∈ add_undirected_edge g ⟨v, u⟩
+             ) → v = w := by
+  intro v w e_in
+  apply Or.elim e_in <;> (
+    intro e_in
+    apply Or.elim (add_undirected_edge_eq_or_in g _ _ e_in) <;> intro h₁ )
+  . apply Or.elim h₁ <;> intro h₁
+    . exact Edge.mk.inj h₁ |>.left |>.symm
+    . have := Edge.mk.inj h₁; simp [this.right] at this; exact Eq.symm this
+  . have := edge_vertices g _ _ h₁ |>.right |> u_not_in; contradiction
+  . apply Or.elim h₁ <;> intro h₁
+    . have := Edge.mk.inj h₁; simp [this.left] at this; exact Eq.symm this
+    . simp at h₁; exact Eq.symm h₁
+  . have := edge_vertices g _ _ h₁ |>.left |> u_not_in; contradiction
+
+theorem add_undirected_edge_new_start_no_in_edge (g : Graph α) (u : α)
+    (u_not_in : ¬has_vertex g u)
+    : ∀ v w, u ≠ v → v ≠ w → ⟨w, u⟩ ∉ add_undirected_edge g ⟨u, v⟩ := by
+  intro v w uv_neq vw_neq wu_in
+  exact add_undirected_edge_pres_edges g ⟨w, u⟩ ⟨u, v⟩
+      (by simp; intro _; exact uv_neq)
+      (by simp; intro eq; exact vw_neq (Eq.symm eq))
+    |>.mpr wu_in |> edge_vertices g w u |>.right |> u_not_in
+
+-- theorem add_undirected_edge_new_finish_no_in_edge (g : Graph α) (u : α)
+    -- (u_not_in : ¬has_vertex g u)
+    -- : ∀ v w, u ≠ v → v ≠ w → ⟨u, w⟩ ∉ add_undirected_edge g ⟨v, u⟩ := by
+  -- intro v w uv_neq vw_neq uw_in
+  -- have := add_undirected_edge_pres_edges g ⟨u, w⟩ ⟨v, u⟩
+      -- (by simp; intro eq; simp [←eq] at vw_neq; exact neq_symm vw_neq)
+      -- (by simp; intro eq; exact vw_neq (Eq.symm eq))
+    -- |>.mpr
+  -- have h' := this uw_in |> edge_vertices g w u |>.left |> u_not_in
+
 
 /- Function and theorems for removing undirected edges -/
 
