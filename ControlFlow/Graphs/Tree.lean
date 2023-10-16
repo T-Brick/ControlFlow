@@ -10,10 +10,10 @@ variable {Graph : (α : Type) → Type}
 variable [Digraph α Graph] [DecidableEq α]
 
 @[reducible, simp] def UndirectedGraph.Cyclic {g : Graph α}
-    (_ : UndirectedGraph g) : Prop := ∃ v, ∃ ps, Path.Undirected g v v ps
+    (_ug : UndirectedGraph g) : Prop := ∃ v, ∃ ps, Path.Undirected g v v ps
 
 @[reducible, simp] def UndirectedGraph.Acyclic {g : Graph α}
-    (_ : UndirectedGraph g) : Prop := ∀ v, ¬∃ ps, Path.Undirected g v v ps
+    (_ug : UndirectedGraph g) : Prop := ∀ v, ¬∃ ps, Path.Undirected g v v ps
 
 @[simp] theorem UndirectedGraph.Acyclic.iff_not_cyclic {g : Graph α}
     (ug : UndirectedGraph g) : Acyclic ug ↔ ¬Cyclic ug := by simp
@@ -21,10 +21,28 @@ variable [Digraph α Graph] [DecidableEq α]
 @[simp] theorem UndirectedGraph.Cyclic.iff_not_acyclic {g : Graph α}
     (ug : UndirectedGraph g) : Cyclic ug ↔ ¬Acyclic ug := by simp
 
+theorem UndirectedGraph.Acyclic.add_edge_finish {g : Graph α}
+    {ug : UndirectedGraph g}
+    (acyclic : Acyclic ug)
+    (e : Edge α)
+    (u_not_in : ¬Digraph.has_vertex g e.start)
+    (neq : e.start ≠ e.finish)
+    : Acyclic (add_edge ug e) := by
+  intro w
+  have h := acyclic w
+  have := Path.Undirected.add_edge_new_start_no_cycle u_not_in neq
+  if eq : e.start = w then rw [←eq]; exact this else
+    simp at h
+    intro h'
+    apply Exists.elim h'; intro a upath
+    exact Path.Undirected.add_edge_new_start_pres ug u_not_in upath
+      (neq_symm eq) (neq_symm eq) |> h a
+
+
 structure Tree (g : Graph α) : Prop where
   undirected : UndirectedGraph g
-  connected : Digraph.Connected g
-  acyclic : UndirectedGraph.Acyclic undirected
+  connected  : Digraph.Connected g
+  acyclic    : UndirectedGraph.Acyclic undirected
 
 structure Tree.Poly {g : Graph α} (dag : DAG g) where
   undirected   := Digraph.undirect g
@@ -54,20 +72,26 @@ def trivial (v : α) : Tree (Digraph.trivial v : Graph α) :=
       case cons h _ => exact no_edge _ h
   }
 
-def add_branch {g : Graph α} (tree : Tree g) (e : Edge α)
+def add_branch_start {g : Graph α} (tree : Tree g) (e : Edge α)
     (start_in : Digraph.has_vertex g e.start)
     (finish_out : ¬Digraph.has_vertex g e.finish)
+    (neq : e.start ≠ e.finish)
     : Tree (Digraph.add_undirected_edge g e) :=
   { undirected := UndirectedGraph.add_edge tree.undirected e
   , connected  := Digraph.Connected.add_vertex_start tree.connected e start_in
   , acyclic    := sorry
   }
 
-def add_branch' {g : Graph α} (tree : Tree g) (e : Edge α)
+def add_branch_finish {g : Graph α} (tree : Tree g) (e : Edge α)
     (start_out : ¬Digraph.has_vertex g e.start)
     (finish_in : Digraph.has_vertex g e.finish)
+    (neq : e.start ≠ e.finish)
     : Tree (Digraph.add_undirected_edge g e) :=
-  sorry
+  { undirected := UndirectedGraph.add_edge tree.undirected e
+  , connected  := Digraph.Connected.add_vertex_finish tree.connected e finish_in
+  , acyclic    :=
+      UndirectedGraph.Acyclic.add_edge_finish tree.acyclic e start_out neq
+  }
 
 
 def ofInductiveTree [Digraph (Nat × α) Graph] (itree : _root_.Tree α)
@@ -96,6 +120,6 @@ theorem iff_acyclic_add_cycle {g : Graph α} (ug : UndirectedGraph g)
     exact tree.acyclic
     intro e h₂
     have := tree.connected
-    simp at *
+    -- simp at *
     sorry
   . sorry
