@@ -557,6 +557,16 @@ theorem add_undirected_edge_self_makes_cycle {g : Graph α} {u : α}
     : add_undirected_edge g ⟨u, u⟩ |= [u] : u -> u :=
   .edge (add_undirected_edge_adds g ⟨u, u⟩ |>.left)
 
+@[simp] theorem add_undirected_edge_flip_iff {g : Graph α} {e : Edge α}
+    {u v : α} {ps : List α}
+    : add_undirected_edge g e.flip |= ps : u -> v
+    ↔ add_undirected_edge g e |= ps : u -> v := by
+  apply Iff.intro <;> (
+    intro path
+    induction path
+    case edge h => exact .edge h
+    case cons h₁ _path' h₂ ih => exact .cons h₁ ih h₂
+  )
 
 /- Persevation of paths through graph changes -/
 
@@ -639,9 +649,17 @@ instance {g : Graph α} : Coe (Path g u v ps) (Path (add_vertex g w) u v ps) :=
 instance {g : Graph α} : Coe (Path g u v ps) (Path (add_edge g e) u v ps) :=
   ⟨add_edge_pres e⟩
 
-instance {g : Graph α}
-    : Coe (Path g u v ps) (Path (add_undirected_edge g e) u v ps) :=
+instance {g : Graph α} : Coe (Path g u v ps)
+                             (Path (add_undirected_edge g e) u v ps) :=
   ⟨add_undirected_edge_pres e⟩
+
+instance {g : Graph α} : Coe (Path (add_undirected_edge g e.flip) u v ps)
+                             (Path (add_undirected_edge g e) u v ps) :=
+  ⟨add_undirected_edge_flip_iff.mp⟩
+
+instance {g : Graph α} : Coe (Path (add_undirected_edge g e) u v ps)
+                             (Path (add_undirected_edge g e.flip) u v ps) :=
+  ⟨add_undirected_edge_flip_iff.mpr⟩
 
 
 namespace Undirected
@@ -798,6 +816,7 @@ theorem add_edge_pres {g : Graph α} {u v : α} {ps : List α} (e : Edge α)
   ⟨ upath.path, add_edge upath.undirected e, upath.pathlist_start⟩
 
 theorem add_edge_new_start_pres {g : Graph α} {u v w₁ w₂ : α} {ps : List α}
+    (ug : UndirectedGraph g)
     (u_not_in : ¬has_vertex g u)
     (upath : Undirected (add_undirected_edge g ⟨u, v⟩) w₁ w₂ ps)
     (w₁u_neq : w₁ ≠ u)
@@ -807,7 +826,7 @@ theorem add_edge_new_start_pres {g : Graph α} {u v w₁ w₂ : α} {ps : List �
   case edge w₂ h =>
     apply Or.elim (add_undirected_edge_eq_or_in g ⟨w₁,w₂⟩ ⟨u,v⟩ h) <;> intro h₁
     . apply Or.elim h₁ <;> (simp; intro h₁ h₂; contradiction)
-    . exact ⟨.edge h₁, sorry, sorry⟩
+    . exact ⟨.edge h₁, ug, upath.pathlist_start⟩
   case cons cons v' ps' w h₁ path' h₂ ih =>
     apply Exists.elim (prior_path_undirected upath (pathlist_nonempty path'))
     intro w' upath'
@@ -822,7 +841,7 @@ theorem add_edge_new_start_pres {g : Graph α} {u v w₁ w₂ : α} {ps : List �
       have := add_undirected_edge_pres_edges g ⟨v', w⟩ ⟨u, v⟩
         (by simp; intro eq' _; exact eq eq')
         (by simp; intro _ eq'; exact w₂u_neq eq')
-      exact ⟨.cons (this.mpr h₁) (ih upath' eq) h₂, sorry, sorry⟩
+      exact ⟨.cons (this.mpr h₁) (ih upath' eq) h₂, ug, upath.pathlist_start⟩
 
 
 /- Coercions for undirected path preservations -/
@@ -909,6 +928,22 @@ theorem add_undirected_edge_pres {g : Graph α} {u v : Digraph.Vertices g}
   case path ps path =>
     exact Reachable.path ps (Path.add_undirected_edge_pres e path)
 
+@[simp] theorem add_undirected_edge_flip_iff {g : Graph α}
+    (u v : α) (e : Edge α)
+    (u_in_e : has_vertex (add_undirected_edge g e) u)
+    (u_in_eflip : has_vertex (add_undirected_edge g e.flip) u)
+    (v_in_e : has_vertex (add_undirected_edge g e) v)
+    (v_in_eflip : has_vertex (add_undirected_edge g e.flip) v)
+    : Reachable (add_undirected_edge g e.flip) ⟨u, u_in_eflip⟩ ⟨v, v_in_eflip⟩
+    ↔ Reachable (add_undirected_edge g e) ⟨u, u_in_e⟩ ⟨v, v_in_e⟩ := by
+  apply Iff.intro <;> (
+    intro reach
+    cases reach
+    case refl => exact .refl
+    case path ps path =>
+      exact Reachable.path ps (add_undirected_edge_flip_iff.mp path)
+  )
+
 
 /- Coercions for preservation -/
 
@@ -960,6 +995,15 @@ def add_edge {g : Graph α} (connected : Connected g) (e : Edge α)
   have v_in' := node_in v |>.mpr v_in
   exact Path.Reachable.add_undirected_edge_pres e (connected u v u_in' v_in')
 
+theorem add_edge_flip_iff {g : Graph α} {e : Edge α}
+    : Connected (Digraph.add_undirected_edge g e.flip)
+      ↔ Connected (Digraph.add_undirected_edge g e) := by
+  apply Iff.intro <;> (intro h u v h₁ h₂)
+  . exact Path.Reachable.add_undirected_edge_flip_iff u v e h₁ h₁ h₂ h₂
+      |>.mp (h u v h₁ h₂)
+  . exact Path.Reachable.add_undirected_edge_flip_iff u v e h₁ h₁ h₂ h₂
+      |>.mpr (h u v h₁ h₂)
+
 def add_vertex_start {g : Graph α} (connected : Connected g) (e : Edge α)
     (start_in : has_vertex g e.start)
     : Connected (Digraph.add_undirected_edge g e) := by
@@ -994,7 +1038,7 @@ def add_vertex_start {g : Graph α} (connected : Connected g) (e : Edge α)
 
 def add_vertex_finish {g : Graph α} (connected : Connected g) (e : Edge α)
     (h₁ : has_vertex g e.finish)
-    : Connected (Digraph.add_undirected_edge g e) := by
-  sorry
+    : Connected (Digraph.add_undirected_edge g e) :=
+  add_vertex_start connected e.flip h₁ |> add_edge_flip_iff.mp
 
 end Connected

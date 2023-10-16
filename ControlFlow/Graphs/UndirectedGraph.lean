@@ -124,6 +124,44 @@ theorem add_undirected_edge_new_finish_from_antisymm (g : Graph α) (u : α)
     . simp at h₁; exact Eq.symm h₁
   . have := edge_vertices g _ _ h₁ |>.left |> u_not_in; contradiction
 
+@[simp] theorem add_undirected_edge_flip_edges_iff (g : Graph α) (e : Edge α)
+    : ∀ e', e' ∈ add_undirected_edge g e.flip
+          ↔ e' ∈ add_undirected_edge g e := by
+  intro e'
+  simp [add_undirected_edge]
+  apply Iff.intro <;> intro h₁
+  . if eq : e' = e then
+      simp [eq]
+      exact add_edge_pres_existing_edge _ _ ⟨_, _⟩ (add_edge_adds g _)
+    else if eqflip : e' = e.flip then
+      simp [eqflip]; exact add_edge_adds _ ⟨_, _⟩
+    else
+      simp at eqflip
+      apply add_edge_pres_edges (add_edge g _) _ ⟨_, _⟩ eqflip |>.mp
+      apply add_edge_pres_existing_edge _ _ _
+      apply add_edge_pres_edges g e' ⟨e.finish, e.start⟩ eqflip |>.mpr
+      apply add_edge_pres_edges (add_edge g ⟨e.finish, e.start⟩) e' e eq |>.mpr
+      exact h₁
+  . if eq : e' = e then
+      simp [eq]; exact add_edge_adds _ ⟨_, _⟩
+    else if eqflip : e' = e.flip then
+      simp [eqflip]
+      exact add_edge_pres_existing_edge _ _ ⟨_, _⟩ (add_edge_adds g _)
+    else
+      simp at eqflip
+      apply add_edge_pres_edges (add_edge g ⟨e.finish, e.start⟩) e' e eq |>.mp
+      apply add_edge_pres_edges g e' ⟨e.finish, e.start⟩ eqflip |>.mp
+      apply add_edge_pres_edges g e' e eq |>.mpr
+      apply add_edge_pres_edges (add_edge g e) e' ⟨_, _⟩ eqflip |>.mpr
+      exact h₁
+
+theorem add_undirected_edge_flip_vertices_iff (g : Graph α) (e : Edge α)
+    : ∀ v, has_vertex (add_undirected_edge g e.flip) v
+         ↔ has_vertex (add_undirected_edge g e) v := by
+  intro v; apply Iff.intro <;> intro h₁
+  . sorry
+  . sorry
+
 theorem add_undirected_edge_new_start_no_in_edge (g : Graph α) (u : α)
     (u_not_in : ¬has_vertex g u)
     : ∀ v w, u ≠ v → v ≠ w → ⟨w, u⟩ ∉ add_undirected_edge g ⟨u, v⟩ := by
@@ -132,16 +170,6 @@ theorem add_undirected_edge_new_start_no_in_edge (g : Graph α) (u : α)
       (by simp; intro _; exact uv_neq)
       (by simp; intro eq; exact vw_neq (Eq.symm eq))
     |>.mpr wu_in |> edge_vertices g w u |>.right |> u_not_in
-
--- theorem add_undirected_edge_new_finish_no_in_edge (g : Graph α) (u : α)
-    -- (u_not_in : ¬has_vertex g u)
-    -- : ∀ v w, u ≠ v → v ≠ w → ⟨u, w⟩ ∉ add_undirected_edge g ⟨v, u⟩ := by
-  -- intro v w uv_neq vw_neq uw_in
-  -- have := add_undirected_edge_pres_edges g ⟨u, w⟩ ⟨v, u⟩
-      -- (by simp; intro eq; simp [←eq] at vw_neq; exact neq_symm vw_neq)
-      -- (by simp; intro eq; exact vw_neq (Eq.symm eq))
-    -- |>.mpr
-  -- have h' := this uw_in |> edge_vertices g w u |>.left |> u_not_in
 
 
 /- Function and theorems for removing undirected edges -/
@@ -263,21 +291,40 @@ instance {g : Graph α} {e₁ e₂ : Edge α}
     : Coe (e₁ ∈ g) (e₁ ∈ add_undirected_edge g e₂) :=
   ⟨add_undirected_edge_pres_existing_edge g e₁ e₂⟩
 
+instance {g : Graph α} {e₁ e₂ : Edge α}
+    : Coe (has_edge g e₁) (has_edge (add_undirected_edge g e₂) e₁) :=
+  ⟨add_undirected_edge_pres_existing_edge g e₁ e₂⟩
+
+instance {g : Graph α} {e₁ e₂ : Edge α}
+    : Coe (e₁ ∈ add_undirected_edge g e₂.flip)
+          (e₁ ∈ add_undirected_edge g e₂) :=
+  ⟨add_undirected_edge_flip_edges_iff g e₂ e₁ |>.mp⟩
+
 instance {g : Graph α} {e : Edge α} {v : α}
     : Coe (has_vertex g v) (has_vertex (add_undirected_edge g e) v) :=
   ⟨add_undirected_edge_pres_existing_vertex g e v⟩
 
+instance {g : Graph α} {e : Edge α} {v : α}
+    : Coe (has_vertex (add_undirected_edge g e.flip) v)
+          (has_vertex (add_undirected_edge g e) v) :=
+  ⟨add_undirected_edge_flip_vertices_iff g e v |>.mp⟩
+
 instance {g : Graph α} {e : Edge α}
     : Coe (Vertices g) (Vertices (add_undirected_edge g e)) where
-  coe v := ⟨ v.val
-           , add_undirected_edge_pres_existing_vertex g e v.val v.property
-           ⟩
+  coe v := ⟨v.val, v.property⟩
+
+instance {g : Graph α} {e : Edge α}
+    : Coe (Vertices (add_undirected_edge g e.flip))
+          (Vertices (add_undirected_edge g e)) where
+  coe v := ⟨v.val, v.property⟩
 
 
 end Digraph
 
 
 namespace UndirectedGraph
+
+open Digraph
 
 def empty : UndirectedGraph (Digraph.empty : Graph α) :=
   ⟨by intro u v
