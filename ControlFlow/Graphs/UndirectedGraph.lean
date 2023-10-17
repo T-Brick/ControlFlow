@@ -158,9 +158,25 @@ theorem add_undirected_edge_new_finish_from_antisymm (g : Graph α) (u : α)
 theorem add_undirected_edge_flip_vertices_iff (g : Graph α) (e : Edge α)
     : ∀ v, has_vertex (add_undirected_edge g e.flip) v
          ↔ has_vertex (add_undirected_edge g e) v := by
-  intro v; apply Iff.intro <;> intro h₁
-  . sorry
-  . sorry
+  intro v
+  if eq_start : v = e.start then
+    have e_has :=
+      add_undirected_edge_adds g e |>.left |> edge_vertices _ _ _ |>.left
+    have ef_has :=
+      add_undirected_edge_adds g e.flip |>.right |> edge_vertices _ _ _ |>.left
+    rw [eq_start] at *
+    exact ⟨fun _ => e_has, fun _ => ef_has⟩
+  else if eq_finish : v = e.finish then
+    have e_has :=
+      add_undirected_edge_adds g e |>.right |> edge_vertices _ _ _ |>.left
+    have ef_has :=
+      add_undirected_edge_adds g e.flip |>.left |> edge_vertices _ _ _ |>.left
+    rw [eq_finish] at *
+    exact ⟨fun _ => e_has, fun _ => ef_has⟩
+  else
+    have back := add_undirected_edge_pres_vertex g v _ _ eq_start eq_finish
+    have forward := add_undirected_edge_pres_vertex g v _ _ eq_finish eq_start
+    exact Iff.trans (Iff.symm forward) back
 
 theorem add_undirected_edge_new_start_no_in_edge (g : Graph α) (u : α)
     (u_not_in : ¬has_vertex g u)
