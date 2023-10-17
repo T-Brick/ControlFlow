@@ -172,6 +172,13 @@ theorem first_pathlist_imp_edge {g : Graph α} {u v w₁ w₂ : α} (ps₁ : Lis
     apply Exists.elim (finish_cons_rest path'); intro _ h
     simp at h; rw [←h.left.left] at h₁; exact h₁
 
+theorem single_pathlist_imp_edge {g : Graph α} {u v : α}
+    (path : g |= [w] : u -> v)
+    : ⟨u, v⟩ ∈ g := by
+  cases path
+  case edge h => exact h
+  case cons path _ => have := pathlist_nonempty path; contradiction
+
 def split {g : Graph α} {u v w : α} {ps : List α}
     (h₁ : v ∈ ps)
     (h₂ : v ≠ w)
@@ -217,6 +224,43 @@ def split {g : Graph α} {u v w : α} {ps : List α}
       . simp; exact h₄
       . apply And.intro (by simp)
         exact And.intro path' (.edge h₃)
+
+theorem in_pathlist_has_path {g : Graph α} {u v w₁ w₂ : α} {ps : List α}
+    (path : g |= ps : w₁ -> w₂)
+    (u_in_ps : u ∈ ps)
+    (v_in_ps : v ∈ ps)
+    (uv_neq : u ≠ v)
+    : (∃ ps', g |= ps' : u -> v) ∨ (∃ ps', g |= ps' : v -> u) := by
+  if uw₁_eq : u = w₁ then
+    simp [uw₁_eq]; apply Or.inl
+    if vw₂_eq : v = w₂ then simp [vw₂_eq]; exact Exists.intro ps path else
+    apply Exists.elim (split v_in_ps vw₂_eq path); intro ps₁ h
+    apply Exists.elim h; intro ps₂ h
+    exact Exists.intro ps₁ h.right.right.left
+  else if uw₂_eq : u = w₂ then
+    simp [uw₂_eq]; apply Or.inr
+    if vw₁_eq : v = w₁ then simp [vw₁_eq]; exact Exists.intro ps path else
+    have vw₂_neq : v ≠ w₂ := fun eq => by simp [←eq] at uw₂_eq; contradiction
+    apply Exists.elim (split v_in_ps vw₂_neq path); intro ps₁ h
+    apply Exists.elim h; intro ps₂ h
+    exact Exists.intro ps₂ h.right.right.right
+  else
+    apply Exists.elim (split u_in_ps uw₂_eq path); intro ps₁ h
+    apply Exists.elim h; intro ps₂ h
+    simp [h.right.left] at v_in_ps
+    apply Or.elim v_in_ps <;> intro v_in
+    . apply Or.inl
+      have path' := h.right.right.right
+      if vw₂_eq : v = w₂ then simp [vw₂_eq]; exact Exists.intro ps₂ path' else
+      apply Exists.elim (split v_in vw₂_eq path'); intro ps₁' h
+      apply Exists.elim h; intro ps₂' h
+      exact Exists.intro ps₁' h.right.right.left
+    . apply Or.inr
+      have path' := h.right.right.left
+      apply Exists.elim (split v_in (neq_symm uv_neq) path'); intro ps₁' h
+      apply Exists.elim h; intro ps₂' h
+      exact Exists.intro ps₂' h.right.right.right
+
 
 def prior_vertex {g : Graph α} {u v : α} {ps : List α}
     (path : g |= ps : u -> v) : α :=
@@ -283,6 +327,16 @@ def remove_cycle {g : Graph α} {u v : α} {ps : List α}
       )
     )
   else Exists.intro ps ⟨path, h₂⟩
+
+/- all acyclic paths are undirected -/
+theorem Acyclic.toUndirected {g : Graph α} {u v : α} {ps : List α}
+    (ug : UndirectedGraph g)
+    (acyclic : Acyclic g u v ps)
+    : Undirected g u v ps := by
+  apply Undirected.mk (acyclic.path) ug
+  intro w ps' ps_eq
+  have u_not_in := acyclic.acyclic
+  simp [ps_eq] at u_not_in
 
 -- todo finish
 theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
@@ -553,7 +607,7 @@ theorem add_undirected_edge_makes_cycle {g : Graph α} {u v : α}
     (.edge (add_undirected_edge_adds g ⟨u, v⟩ |>.left))
     (List.not_mem_cons_of_ne_of_not_mem neq (List.not_mem_nil u))
 
-theorem add_undirected_edge_self_makes_cycle {g : Graph α} {u : α}
+theorem add_undirected_edge_self_makes_cycle (g : Graph α) (u : α)
     : add_undirected_edge g ⟨u, u⟩ |= [u] : u -> u :=
   .edge (add_undirected_edge_adds g ⟨u, u⟩ |>.left)
 
@@ -665,6 +719,18 @@ instance {g : Graph α} : Coe (Path (add_undirected_edge g e) u v ps)
 namespace Undirected
 
 open UndirectedGraph
+
+theorem cons {g : Graph α} {u v w x y: α} {ps : List α}
+    (vw_in : ⟨v, w⟩ ∈ g)
+    (upath : Undirected g u v (x::y::ps))
+    (not_in_ps : w ∉ (x::y::ps))
+    : Undirected g u w (w::x::y::ps) :=
+  ⟨ .cons vw_in upath.path not_in_ps
+  , upath.undirected
+  , fun w' ps' eq => by
+      cases ps' <;> simp at eq
+      case cons z zs => exact (upath.pathlist_start w' zs) eq.right
+  ⟩
 
 theorem prior_path_undirected_cons {g : Graph α} {u v w₁ w₂ : α} {ps : List α}
     (upath : Undirected g u v (w₂::w₁::ps))
@@ -795,9 +861,9 @@ theorem add_edge_new_start_no_cycle {g : Graph α} {u v : α}
     add_undirected_edge_new_start_cycle_pathlist u_not_in neq ps upath.path
   exact upath.cycle_length rfl (by simp [this])
 
-theorem add_edge_self_makes_cycle {g : Graph α} (ug : UndirectedGraph g)
+theorem add_edge_self_makes_cycle {g : Graph α} (ug : UndirectedGraph g) (u : α)
     : Undirected (add_undirected_edge g ⟨u, u⟩) u u [u] :=
-  ⟨ Path.add_undirected_edge_self_makes_cycle
+  ⟨ Path.add_undirected_edge_self_makes_cycle g u
   , add_edge ug ⟨u, u⟩
   , by intro w ps' h; cases ps' <;> simp at h
   ⟩
@@ -901,6 +967,34 @@ def edge' {g : Graph α} {e : Edge α} (e_in : e ∈ g)
   let v : Vertices g := ⟨e.finish, evs_in.right⟩
   let uv_in : ⟨u.val, v.val⟩ ∈ g := by simp [*]; exact e_in
   ⟨evs_in.left, evs_in.right, edge uv_in⟩
+
+theorem toPath {g : Graph α} {u v : Vertices g}
+    (reach : Reachable g u v) (neq : u.val ≠ v.val)
+    : ∃ ps, g |= ps : u.val -> v.val := by
+  cases reach
+  case refl => contradiction
+  case path ps path => exact Exists.intro ps path
+
+theorem toAcyclic {g : Graph α} {u v : Vertices g}
+    (reach : Reachable g u v)
+    (neq : u.val ≠ v.val)
+    : ∃ ps, Acyclic g u.val v.val ps := by
+  apply Exists.elim (reach.toPath neq); intro ps path
+  if u_in : u.val ∈ ps then
+    apply Exists.elim (split_cycle path u_in neq); intro ps₁ h
+    apply Exists.elim h; intro ps₂ h
+    exact Exists.intro ps₂ h.right.right.right
+  else
+    exact Exists.intro ps ⟨path, u_in⟩
+
+theorem toUndirectedPath {g : Graph α} {u v : Vertices g}
+    (ug : UndirectedGraph g)
+    (reach : Reachable g u v)
+    (neq : u.val ≠ v.val)
+    : ∃ ps, Undirected g u.val v.val ps ∧ u.val ∉ ps :=
+  Exists.elim (reach.toAcyclic neq) (fun ps acyclic =>
+    Exists.intro ps (And.intro (acyclic.toUndirected ug) acyclic.acyclic)
+  )
 
 
 /- Preservation properties for graphs -/

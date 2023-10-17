@@ -59,6 +59,10 @@ open Digraph
 
 @[reducible, simp] def graph {g : Graph α} (_ : Tree g) : Graph α := g
 
+/- The empty graph is generally not considered a tree, but this is mostly due to
+    trees being defined using the V - E = 1 relation, with implicit assumptions
+    on most theorems which would break for empty trees.
+ -/
 def empty : Tree (Digraph.empty : Graph α) :=
   { undirected := UndirectedGraph.empty
   , connected  := Digraph.Connected.empty
@@ -173,16 +177,44 @@ where walker (itree : _root_.Tree α)
 theorem iff_acyclic_add_cycle {g : Graph α} (ug : UndirectedGraph g)
     : Tree g
     ↔ UndirectedGraph.Acyclic ug
-      ∧ (∀ e, e ∉ g
-            ∧ Digraph.has_vertex g e.start
-            ∧ Digraph.has_vertex g e.finish
+      ∧ (∀ e, e ∉ g ∧ has_vertex g e.start ∧ has_vertex g e.finish
             → UndirectedGraph.Cyclic (UndirectedGraph.add_edge ug e)) := by
   apply Iff.intro
   . intro tree
-    apply And.intro
-    exact tree.acyclic
+    apply And.intro (tree.acyclic)
     intro e h₂
-    have := tree.connected
-    -- simp at *
-    sorry
-  . sorry
+    apply Exists.intro e.start
+    have e_is : e = ⟨e.start, e.finish⟩ := by rfl
+    if eq : e.start = e.finish then
+      rw [e_is, eq]; apply Exists.intro [e.finish]
+      exact Path.Undirected.add_edge_self_makes_cycle ug e.finish
+    else
+      have eupath := Path.Reachable.toUndirectedPath ug
+        (tree.connected e.start e.finish h₂.right.left h₂.right.right) eq
+      apply Exists.elim eupath; intro ps upath_and
+      apply Exists.intro (e.start :: ps)
+      simp at upath_and
+      have upath := upath_and.left
+      have upath'
+        : Path.Undirected (add_undirected_edge g e) e.start e.finish ps := upath
+      cases ps
+      case nil => have := Path.pathlist_nonempty upath'.path; contradiction
+      case cons x xs =>
+        cases xs
+        case nil =>
+          have := h₂.left (Path.single_pathlist_imp_edge upath.path)
+          contradiction
+        case cons y ys =>
+          exact Path.Undirected.cons
+            (add_undirected_edge_adds g e |>.right) upath' upath_and.right
+  . intro h₁
+    apply (Tree.mk ug · h₁.left)
+    intro u v u_in v_in
+    if uv_in : has_edge g ⟨u, v⟩ then
+      exact Path.Reachable.edge' uv_in |>.snd.snd
+    else
+      have := h₁.right ⟨u, v⟩ (And.intro uv_in (And.intro u_in v_in))
+      apply Exists.elim this; intro w eupath
+      apply Exists.elim eupath; intro ps upath
+      have := h₁.left w
+      sorry
