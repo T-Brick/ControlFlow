@@ -294,21 +294,21 @@ def split_cycle {g : Graph α} {u v : α} {ps : List α}
                 ∧ Acyclic g u v ps₂) :=
   let split_res := split h₁ h₂ path
   Exists.elim split_res (fun ps₁ rest =>
-      Exists.elim rest (fun ps₂ h₃ =>
-        Exists.intro ps₁ (
-          Exists.intro ps₂ (
-            And.intro (h₃.left)
-            <| And.intro (h₃.right.left)
-            <| And.intro (h₃.right.right.left)
-            <| ⟨ h₃.right.right.right
-               , by intro h₄
-                    apply List.disjoint_right.mp h₃.left h₄
-                    exact finish_in_pathlist h₃.right.right.left
-               ⟩
-          )
+    Exists.elim rest (fun ps₂ h₃ =>
+      Exists.intro ps₁ (
+        Exists.intro ps₂ (
+          And.intro (h₃.left)
+          <| And.intro (h₃.right.left)
+          <| And.intro (h₃.right.right.left)
+          <| ⟨ h₃.right.right.right
+             , by intro h₄
+                  apply List.disjoint_right.mp h₃.left h₄
+                  exact finish_in_pathlist h₃.right.right.left
+             ⟩
         )
       )
     )
+  )
 
 def remove_cycle {g : Graph α} {u v : α} {ps : List α}
     (path : g |= ps : u -> v)
@@ -668,6 +668,40 @@ theorem add_undirected_edge_pres {g : Graph α} {u v : α} {ps : List α}
   case edge h => exact .edge h
   case cons path' h₁ h₂ => exact .cons h₁ (add_undirected_edge_pres e path') h₂
 
+theorem add_edge_not_use_start_pres {g : Graph α} {u v w₁ w₂ : α}
+    {ps : List α}
+    (path : add_edge g ⟨u, v⟩ |= ps : w₁ -> w₂)
+    (u_not_in_ps : u ∉ ps)
+    (uw₁_neq : u ≠ w₁)
+    : g |= ps : w₁ -> w₂ := by
+  induction path
+  case edge v' h =>
+    exact .edge (add_edge_pres_edges g ⟨w₁, v'⟩ ⟨u, v⟩
+      (by simp; intro eq _; exact uw₁_neq (Eq.symm eq)) |>.mpr h)
+  case cons v' ps' w' h₁ path' h₂ ih =>
+    have u_not_in_ps' := List.not_mem_of_not_mem_cons u_not_in_ps
+    have e_neq : Edge.mk v' w' ≠ ⟨u, v⟩ := by
+      simp; intro eq₁ _eq₂; rw [eq₁] at path'
+      exact u_not_in_ps' (finish_in_pathlist path')
+    have e_in := add_edge_pres_edges g ⟨v', w'⟩ ⟨u, v⟩ e_neq |>.mpr h₁
+    exact .cons e_in (ih u_not_in_ps') h₂
+
+theorem add_edge_not_use_finish_pres {g : Graph α} {u v w₁ w₂ : α}
+    {ps : List α}
+    (path : add_edge g ⟨u, v⟩ |= ps : w₁ -> w₂)
+    (v_not_in_ps : v ∉ ps)
+    : g |= ps : w₁ -> w₂ := by
+  induction path
+  case edge v' h =>
+    exact .edge (add_edge_pres_edges g ⟨w₁, v'⟩ ⟨u, v⟩
+      (by simp; intro _ eq; simp [eq] at v_not_in_ps) |>.mpr h)
+  case cons v' ps' w' h₁ _path' h₂ ih =>
+    have v_not_in_ps' := List.not_mem_of_not_mem_cons v_not_in_ps
+    have e_neq : Edge.mk v' w' ≠ ⟨u, v⟩ := by
+      simp; intro _ eq; simp [eq] at v_not_in_ps
+    have e_in := add_edge_pres_edges g ⟨v', w'⟩ ⟨u, v⟩ e_neq |>.mpr h₁
+    exact .cons e_in (ih v_not_in_ps') h₂
+
 theorem add_undirected_edge_new_start_pres {g : Graph α} {u v w₁ w₂ : α}
     {ps : List α}
     (u_not_in : ¬has_vertex g u)
@@ -694,6 +728,24 @@ theorem add_undirected_edge_new_start_pres {g : Graph α} {u v w₁ w₂ : α}
         (by simp; intro _ eq'; exact w₂u_neq eq')
       exact .cons (this.mpr h₁) (ih eq) h₂
 
+theorem add_undirected_edge_not_use_start_pres {g : Graph α} {u v w₁ w₂ : α}
+    {ps : List α}
+    (path : add_undirected_edge g ⟨u, v⟩ |= ps : w₁ -> w₂)
+    (u_not_in_ps : u ∉ ps)
+    (uw₁_neq : u ≠ w₁)
+    : g |= ps : w₁ -> w₂ :=
+  add_edge_not_use_start_pres
+    (add_edge_not_use_finish_pres path u_not_in_ps) u_not_in_ps uw₁_neq
+
+theorem add_undirected_edge_not_use_finish_pres {g : Graph α} {u v w₁ w₂ : α}
+    {ps : List α}
+    (path : add_undirected_edge g ⟨u, v⟩ |= ps : w₁ -> w₂)
+    (v_not_in_ps : v ∉ ps)
+    (vw₁_neq : v ≠ w₁)
+    : g |= ps : w₁ -> w₂ :=
+  add_edge_not_use_finish_pres
+    (add_edge_not_use_start_pres path v_not_in_ps vw₁_neq) v_not_in_ps
+
 
 /- Coercions for path preservations -/
 
@@ -710,10 +762,6 @@ instance {g : Graph α} : Coe (Path g u v ps)
 instance {g : Graph α} : Coe (Path (add_undirected_edge g e.flip) u v ps)
                              (Path (add_undirected_edge g e) u v ps) :=
   ⟨add_undirected_edge_flip_iff.mp⟩
-
-instance {g : Graph α} : Coe (Path (add_undirected_edge g e) u v ps)
-                             (Path (add_undirected_edge g e.flip) u v ps) :=
-  ⟨add_undirected_edge_flip_iff.mpr⟩
 
 
 namespace Undirected
@@ -882,7 +930,7 @@ theorem add_edge_pres {g : Graph α} {u v : α} {ps : List α} (e : Edge α)
   ⟨ upath.path, add_edge upath.undirected e, upath.pathlist_start⟩
 
 theorem add_edge_new_start_pres {g : Graph α} {u v w₁ w₂ : α} {ps : List α}
-    (ug : UndirectedGraph g)
+    (ug : UndirectedGraph g) -- todo do we need this??
     (u_not_in : ¬has_vertex g u)
     (upath : Undirected (add_undirected_edge g ⟨u, v⟩) w₁ w₂ ps)
     (w₁u_neq : w₁ ≠ u)
@@ -908,6 +956,28 @@ theorem add_edge_new_start_pres {g : Graph α} {u v w₁ w₂ : α} {ps : List �
         (by simp; intro eq' _; exact eq eq')
         (by simp; intro _ eq'; exact w₂u_neq eq')
       exact ⟨.cons (this.mpr h₁) (ih upath' eq) h₂, ug, upath.pathlist_start⟩
+
+theorem add_edge_not_use_start_pres {g : Graph α} {u v w₁ w₂ : α} {ps : List α}
+    (ug : UndirectedGraph g) -- todo do we need this??
+    (upath : Undirected (add_undirected_edge g ⟨u, v⟩) w₁ w₂ ps)
+    (u_not_in_ps : u ∉ ps)
+    (uw₁_neq : u ≠ w₁)
+    : Undirected g w₁ w₂ ps :=
+  ⟨ add_undirected_edge_not_use_start_pres upath.path u_not_in_ps uw₁_neq
+  , ug
+  , upath.pathlist_start
+  ⟩
+
+theorem add_edge_not_use_finish_pres {g : Graph α} {u v w₁ w₂ : α} {ps : List α}
+    (ug : UndirectedGraph g) -- todo do we need this??
+    (upath : Undirected (add_undirected_edge g ⟨u, v⟩) w₁ w₂ ps)
+    (v_not_in_ps : v ∉ ps)
+    (vw₁_neq : v ≠ w₁)
+    : Undirected g w₁ w₂ ps :=
+  ⟨ add_undirected_edge_not_use_finish_pres upath.path v_not_in_ps vw₁_neq
+  , ug
+  , upath.pathlist_start
+  ⟩
 
 
 /- Coercions for undirected path preservations -/
