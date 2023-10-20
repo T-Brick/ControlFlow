@@ -213,8 +213,37 @@ theorem iff_acyclic_add_cycle {g : Graph α} (ug : UndirectedGraph g)
     if uv_in : has_edge g ⟨u, v⟩ then
       exact Path.Reachable.edge' uv_in |>.snd.snd
     else
-      have := h₁.right ⟨u, v⟩ (And.intro uv_in (And.intro u_in v_in))
-      apply Exists.elim this; intro w eupath
+      have cyclic := h₁.right ⟨u, v⟩ (And.intro uv_in (And.intro u_in v_in))
+      apply Exists.elim cyclic; intro w eupath
       apply Exists.elim eupath; intro ps upath
-      have := h₁.left w
-      sorry
+      if uv_eq : u = v then simp [uv_eq]; exact .refl else
+      have := h₁.left u
+      have := Path.in_pathlist_has_path (u := u) (v := v) upath.path
+
+      if u_in_ps : u ∈ ps then
+        if v_in_ps : v ∈ ps then
+          have possible_paths :=
+            Path.in_pathlist_has_path upath.path u_in_ps v_in_ps uv_eq
+          apply Or.elim possible_paths
+              <;> (intro epath'; apply Exists.elim epath'; intro ps' path')
+          . sorry
+          . sorry
+    -- todo: abstract the lines below? since they are quite repeatitive
+        else if vw_eq : v = w then
+          simp [←vw_eq] at upath
+          have := v_in_ps (Path.finish_in_pathlist upath.path)
+          contradiction
+        else
+          have upath_ww :=
+            Path.Undirected.add_edge_not_use_finish_pres ug upath v_in_ps vw_eq
+          have := h₁.left w (Exists.intro ps upath_ww)
+          contradiction
+      else if uw_eq : u = w then
+        simp [←uw_eq] at upath
+        have := u_in_ps (Path.finish_in_pathlist upath.path)
+        contradiction
+      else
+        have upath_ww :=
+          Path.Undirected.add_edge_not_use_start_pres ug upath u_in_ps uw_eq
+        have := h₁.left w (Exists.intro ps upath_ww)
+        contradiction

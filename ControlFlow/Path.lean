@@ -179,6 +179,16 @@ theorem single_pathlist_imp_edge {g : Graph α} {u v : α}
   case edge h => exact h
   case cons path _ => have := pathlist_nonempty path; contradiction
 
+theorem last_pathlist_imp_edge {g : Graph α} {u v w : α} {ps : List α}
+    (path : g |= ps : u -> v)
+    (w_last : ps.getLast (pathlist_nonempty path) = w)
+    : ⟨u, w⟩ ∈ g := by
+  induction path
+  case edge h => simp at w_last; rw [w_last] at h; exact h
+  case cons path' _ ih =>
+    rw [List.getLast_cons (pathlist_nonempty path')] at w_last
+    exact ih w_last
+
 def split {g : Graph α} {u v w : α} {ps : List α}
     (h₁ : v ∈ ps)
     (h₂ : v ≠ w)
@@ -354,7 +364,6 @@ theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     apply Exists.elim (remove_cycle path₁ uv_eq); intro ps₁' acyclic₁
     apply Exists.elim (remove_cycle path₂ vw_eq); intro ps₂' acyclic₂
     sorry
-
 
 theorem leave_vertex_no_revisit {g : Graph α} {u v : α} {ps₁ : List α}
     (path₁ : g |= ps₁ : u -> v)
