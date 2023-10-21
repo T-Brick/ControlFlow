@@ -10,8 +10,6 @@ namespace ControlFlow
 variable {Graph : (α : Type) → Type}
 variable [Digraph α Graph] [DecidableEq α]
 
-
-
 structure Tree (g : Graph α) : Prop where
   undirected : UndirectedGraph g
   connected  : Digraph.Connected g
@@ -39,18 +37,13 @@ open Digraph
 def empty : Tree (Digraph.empty : Graph α) :=
   { undirected := UndirectedGraph.empty
   , connected  := Digraph.Connected.empty
-  , acyclic    := by simp; intro u ps; exact Path.Undirected.empty
+  , acyclic    := UndirectedGraph.Acyclic.empty
   }
 
 def trivial (v : α) : Tree (Digraph.trivial v : Graph α) :=
   { undirected := UndirectedGraph.add_vertex UndirectedGraph.empty v
   , connected  := Digraph.Connected.trivial v
-  , acyclic    := by
-      simp; intro u ps upath
-      have no_edge := Digraph.trivial_no_edge (Graph := Graph) v
-      cases upath.path
-      case edge h   => exact no_edge _ h
-      case cons h _ => exact no_edge _ h
+  , acyclic    := UndirectedGraph.Acyclic.trivial v
   }
 
 def add_branch_from_start {g : Graph α} (tree : Tree g) (e : Edge α)

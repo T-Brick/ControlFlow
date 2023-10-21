@@ -45,8 +45,13 @@ def length {g : Graph α} {u v : α} {ps : List α} (_ : g |= ps : u -> v) : Nat
 
 theorem empty : ¬Path (empty : Graph α) u v ps := by
   intro path; cases path
-  case edge h => exact Digraph.empty_edges ⟨u, v⟩ h
-  case cons w _ _ h _ => exact Digraph.empty_edges ⟨w, v⟩ h
+  case edge h => exact empty_edges _ h
+  case cons h _ => exact empty_edges _ h
+
+theorem trivial (w : α): ¬Path (trivial w : Graph α) u v ps := by
+  intro path; cases path
+  case edge h => exact trivial_no_edge _ _ h
+  case cons h _ => exact trivial_no_edge _ _ h
 
 theorem out_edges {g : Graph α} {u v w : α}
     (path₁ : g |= ps : u -> v)

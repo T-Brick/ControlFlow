@@ -21,6 +21,13 @@ variable [Digraph α Graph] [DecidableEq α]
 
 namespace Acyclic
 
+theorem empty : Acyclic (UndirectedGraph.empty : UndirectedGraph (_ : Graph α))
+  := by simp; intro u ps; exact Path.Undirected.empty
+
+theorem trivial (w : α)
+    : Acyclic (UndirectedGraph.trivial w : UndirectedGraph (_ : Graph α)) := by
+  simp; intro _ _ upath; exact Path.Undirected.trivial w upath
+
 @[simp] theorem add_edge_flip_iff {g : Graph α} (ug : UndirectedGraph g)
     {e : Edge α}
     : Acyclic (add_edge ug e.flip)

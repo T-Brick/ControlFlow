@@ -40,6 +40,9 @@ open UndirectedGraph
 theorem empty : ¬Undirected (Digraph.empty : Graph α) u v ps := by
   intro upath; exact Path.empty upath.path
 
+theorem trivial (w : α) : ¬Undirected (Digraph.trivial w : Graph α) u v ps := by
+  intro upath; exact Path.trivial w upath.path
+
 theorem cons {g : Graph α} {u v w x y: α} {ps : List α}
     (vw_in : ⟨v, w⟩ ∈ g)
     (upath : Undirected g u v (x::y::ps))

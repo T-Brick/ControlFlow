@@ -343,13 +343,6 @@ namespace UndirectedGraph
 
 open Digraph
 
-def empty : UndirectedGraph (Digraph.empty : Graph α) :=
-  ⟨by intro u v
-      have uv := Digraph.empty_edges (α:=α) (T := Graph) ⟨u, v⟩
-      have vu := Digraph.empty_edges (α:=α) (T := Graph) ⟨v, u⟩
-      apply Iff.intro <;> (intro h; contradiction)
-  ⟩
-
 def add_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
     : UndirectedGraph (Digraph.add_undirected_edge g e) :=
   ⟨by intro u v
@@ -437,6 +430,19 @@ def rem_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
         have pres := Digraph.rem_vertex_pres_edges g w
         rw [←pres u v eq_u eq_v, ←pres v u eq_v eq_u]
         exact ug.undirected u v
+  ⟩
+
+def empty : UndirectedGraph (Digraph.empty : Graph α) :=
+  ⟨by intro u v
+      have uv := Digraph.empty_edges (α:=α) (T := Graph) ⟨u, v⟩
+      have vu := Digraph.empty_edges (α:=α) (T := Graph) ⟨v, u⟩
+      apply Iff.intro <;> (intro h; contradiction)
+  ⟩
+
+def trivial (w : α) : UndirectedGraph (Digraph.trivial w : Graph α) :=
+  ⟨by intro u v; apply Iff.intro <;> (
+        intro h; have := Digraph.trivial_no_edge _ _ h; contradiction
+      )
   ⟩
 
 instance {g : Graph α} {e : Edge α}
