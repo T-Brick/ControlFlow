@@ -295,7 +295,7 @@ theorem undirect_pres_vertex (g : Graph α)
           apply And.intro <;> (intro h; apply (v_in e in_e))
           exact Or.inl h; exact Or.inr h
         )
-      exact add_edges_pres_vertex g (reverse_edges (toEdges g)) v this |>.mpr h₁
+      exact add_edges_pres_vertex g _ v (Or.inl this) |>.mpr h₁
 
 theorem undirect_pres_edge (g : Graph α) : ∀ e ∈ g, e ∈ (undirect g).fst := by
   intro e h₁; simp [undirect]; exact add_edges_pres_existing_edge g _ e h₁
