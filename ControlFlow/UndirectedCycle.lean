@@ -19,7 +19,18 @@ variable [Digraph α Graph] [DecidableEq α]
 @[simp] theorem Cyclic.iff_not_acyclic {g : Graph α} (ug : UndirectedGraph g)
   : Cyclic ug ↔ ¬Acyclic ug := by simp
 
-theorem Acyclic.add_edge_finish {g : Graph α}
+namespace Acyclic
+
+@[simp] theorem add_edge_flip_iff {g : Graph α} (ug : UndirectedGraph g)
+    {e : Edge α}
+    : Acyclic (add_edge ug e.flip)
+    ↔ Acyclic (add_edge ug e) := by
+  apply Iff.intro <;> (
+    intro acyclic v eps; apply acyclic v
+    exact Exists.imp (fun _ => Path.Undirected.add_edge_flip_iff.mp) eps
+  )
+
+theorem add_edge_finish {g : Graph α}
     {ug : UndirectedGraph g}
     (acyclic : Acyclic ug)
     (e : Edge α)
@@ -35,3 +46,18 @@ theorem Acyclic.add_edge_finish {g : Graph α}
     apply Exists.elim h'; intro a upath
     exact Path.Undirected.add_edge_new_start_pres ug u_not_in upath
       (neq_symm eq) (neq_symm eq) |> h a
+
+theorem add_edge_start {g : Graph α}
+    {ug : UndirectedGraph g}
+    (acyclic : Acyclic ug)
+    (e : Edge α)
+    (u_not_in : ¬Digraph.has_vertex g e.finish)
+    (neq : e.start ≠ e.finish)
+    : Acyclic (add_edge ug e) :=
+  add_edge_finish acyclic e.flip u_not_in (neq_symm neq)
+    |> (add_edge_flip_iff ug).mp
+
+instance {g : Graph α} {e : Edge α} {ug : UndirectedGraph g}
+    : Coe (Acyclic (add_edge ug e.flip))
+          (Acyclic (add_edge ug e)) :=
+  ⟨(add_edge_flip_iff ug).mp⟩

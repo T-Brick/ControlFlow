@@ -5,6 +5,7 @@ namespace ControlFlow
 variable {Graph : (α : Type) → Type}
 variable [Digraph α Graph] [DecidableEq α]
 
+-- todo make not a structure
 structure UndirectedGraph [Digraph α Graph] (g : Graph α) : Prop where
   undirected : ∀ u v, Digraph.has_edge g ⟨u, v⟩ ↔ Digraph.has_edge g ⟨v, u⟩
 
@@ -373,6 +374,19 @@ def add_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
         rw [←h₁, ←h₂, ug.undirected u v]
   ⟩
 
+@[simp] theorem add_edge_flip_iff {g : Graph α} {e : Edge α}
+    : UndirectedGraph (Digraph.add_undirected_edge g e.flip)
+    ↔ UndirectedGraph (Digraph.add_undirected_edge g e) := by
+  apply Iff.intro <;> (
+      intro ug; apply UndirectedGraph.mk; intro u v
+      have he := add_undirected_edge_flip_edges_iff g e
+      have hef := add_undirected_edge_flip_edges_iff g e.flip
+      apply Iff.intro <;> (
+        try exact (he _).mp ∘ (ug.undirected _ _).mp ∘ (he _).mpr
+        try exact (hef _).mp ∘ (ug.undirected _ _).mp ∘ (hef _).mpr
+      )
+    )
+
 def rem_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
     : UndirectedGraph (Digraph.rem_undirected_edge g e) :=
   ⟨by intro u v
@@ -424,5 +438,10 @@ def rem_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
         rw [←pres u v eq_u eq_v, ←pres v u eq_v eq_u]
         exact ug.undirected u v
   ⟩
+
+instance {g : Graph α} {e : Edge α}
+    : Coe (UndirectedGraph (add_undirected_edge g e.flip))
+          (UndirectedGraph (add_undirected_edge g e)) :=
+  ⟨add_edge_flip_iff.mp⟩
 
 end UndirectedGraph

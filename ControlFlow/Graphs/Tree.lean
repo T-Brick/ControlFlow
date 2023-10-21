@@ -60,7 +60,8 @@ def add_branch_from_start {g : Graph α} (tree : Tree g) (e : Edge α)
     : Tree (Digraph.add_undirected_edge g e) :=
   { undirected := UndirectedGraph.add_edge tree.undirected e
   , connected  := Digraph.Connected.add_vertex_start tree.connected e start_in
-  , acyclic    := sorry
+  , acyclic    :=
+      UndirectedGraph.Acyclic.add_edge_start tree.acyclic e finish_out neq
   }
 
 def add_branch_from_finish {g : Graph α} (tree : Tree g) (e : Edge α)
@@ -147,6 +148,8 @@ where walker (itree : _root_.Tree α)
     ⟨rres.n, rres.tree, rres.ptree, pres, rres.lt_in_tree, rres.ge_not_in⟩
 
 
+-- todo: finish; maybe split out the unfinished part, since it isn't clear how
+--    useful this is (i.e. is it worth the effort to finish soon?)
 theorem iff_acyclic_add_cycle {g : Graph α} (ug : UndirectedGraph g)
     : Tree g
     ↔ UndirectedGraph.Acyclic ug

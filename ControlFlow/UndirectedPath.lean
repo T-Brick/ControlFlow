@@ -188,6 +188,17 @@ theorem add_edge_self_makes_cycle {g : Graph α} (ug : UndirectedGraph g) (u : �
   , by intro w ps' h; cases ps' <;> simp at h
   ⟩
 
+@[simp] theorem add_edge_flip_iff {g : Graph α} {e : Edge α}
+    {u v : α} {ps : List α}
+    : Undirected (add_undirected_edge g e.flip) u v ps
+    ↔ Undirected (add_undirected_edge g e) u v ps := by
+  apply Iff.intro <;> (
+    intro upath
+    have path := upath.path
+    simp [Path.add_undirected_edge_flip_iff] at path
+    exact Undirected.mk path upath.undirected upath.pathlist_start
+  )
+
 
 /- Presevation across graph changes -/
 
@@ -261,5 +272,10 @@ instance {g : Graph α}
 instance {g : Graph α}
     : Coe (Undirected g u v ps) (Undirected (add_undirected_edge g e) u v ps) :=
   ⟨add_edge_pres e⟩
+
+instance {g : Graph α}
+    : Coe (Undirected (add_undirected_edge g e.flip) u v ps)
+          (Undirected (add_undirected_edge g e) u v ps) :=
+  ⟨add_edge_flip_iff.mp⟩
 
 end Undirected
