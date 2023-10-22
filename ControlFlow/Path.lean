@@ -95,8 +95,9 @@ theorem pathlist_nonempty {g : Graph α} {u v : α} {ps : List α}
     (path : g |= ps : u -> v) : ps ≠ [] := by
   intro eq; cases path <;> contradiction
 
-theorem in_pathlist_in_graph {g : Graph α} {u v : α}
-    (path : g |= nodes : v -> w) (h₁ : u ∈ nodes) : g |= u := by
+theorem in_pathlist_in_graph {g : Graph α} {v w : α}
+    (path : g |= nodes : v -> w) : ∀ u ∈ nodes, g |= u := by
+  intro u h₁
   induction path <;> simp
   case edge h₂ =>
     cases h₁ <;> simp [*] at *
@@ -608,6 +609,41 @@ theorem add_undirected_edge_self_makes_cycle (g : Graph α) (u : α)
     case edge h => exact .edge h
     case cons h₁ _path' h₂ ih => exact .cons h₁ ih h₂
   )
+
+theorem graph_merge_pathlist_left {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+    (path : Digraph.merge g₁ g₂ |= ps : u -> v)
+    (u_not_in : ¬has_vertex g₂ u)
+    (ps_in : ∀ p ∈ ps, has_vertex g₁ p ∧ ¬has_vertex g₂ p)
+    : g₁ |= ps : u -> v := by
+  induction path with
+  | edge h =>
+    exact .edge (Or.resolve_right (merge_has_edge.mp h)
+      (fun e_in => edge_vertices _ _ _ e_in |>.left |> u_not_in))
+  | cons h₁ _path' h₂ ih =>
+    have path' := ih (fun p h => ps_in p (List.mem_cons_of_mem _ h))
+    have h₁' := Or.resolve_right (merge_has_edge.mp h₁)
+      (fun e_in =>
+        edge_vertices _ _ _ e_in |>.right |> (ps_in _ (by simp) |>.right)
+      )
+    exact .cons h₁' path' h₂
+
+theorem graph_merge_pathlist_right {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+    (path : Digraph.merge g₁ g₂ |= ps : u -> v)
+    (u_not_in : ¬has_vertex g₁ u)
+    (ps_in : ∀ p ∈ ps, ¬has_vertex g₁ p ∧ has_vertex g₂ p)
+    : g₂ |= ps : u -> v := by
+  induction path with
+  | edge h =>
+    exact .edge (Or.resolve_left (merge_has_edge.mp h)
+      (fun e_in => edge_vertices _ _ _ e_in |>.left |> u_not_in))
+  | cons h₁ _path' h₂ ih =>
+    have path' := ih (fun p h => ps_in p (List.mem_cons_of_mem _ h))
+    have h₁' := Or.resolve_left (merge_has_edge.mp h₁)
+      (fun e_in =>
+        edge_vertices _ _ _ e_in |>.right |> (ps_in _ (by simp) |>.left)
+      )
+    exact .cons h₁' path' h₂
+
 
 /- Persevation of paths through graph changes -/
 
