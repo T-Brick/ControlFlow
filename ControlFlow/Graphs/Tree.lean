@@ -41,7 +41,7 @@ def empty : Tree (Digraph.empty : Graph α) :=
   }
 
 def trivial (v : α) : Tree (Digraph.trivial v : Graph α) :=
-  { undirected := UndirectedGraph.add_vertex UndirectedGraph.empty v
+  { undirected := UndirectedGraph.trivial v
   , connected  := Digraph.Connected.trivial v
   , acyclic    := UndirectedGraph.Acyclic.trivial v
   }

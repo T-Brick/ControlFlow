@@ -426,7 +426,7 @@ theorem add_edges_pres_vertex_not_in (g : Graph α) (edges : List (Edge α))
         not_eq.left.left not_eq.left.right |>.mpr h₁
 
 theorem add_edges_pres_vertex (g : Graph α) (edges : List (Edge α))
-    : ∀ u, ((∀ e ∈ edges, u ≠ e.start ∧ u ≠ e.finish) ∨ (g |= u))
+    : ∀ u, (∀ e ∈ edges, (u ≠ e.start ∧ u ≠ e.finish) ∨ g |= u)
          → (has_vertex g u ↔ has_vertex (add_edges g edges) u) := by
   intro u not_eq
   apply Iff.intro
@@ -435,10 +435,10 @@ theorem add_edges_pres_vertex (g : Graph α) (edges : List (Edge α))
     induction edges <;> simp [add_edges] at *
     case nil => exact h₁
     case cons x xs ih =>
-      apply Or.elim not_eq <;> intro h₂
-      . apply ih (Or.inl h₂.right)
-        exact add_edge_pres_vertex _ u _ _ h₂.left.left h₂.left.right |>.mpr h₁
-      . exact h₂
+      apply Or.elim not_eq.left
+      . intro h₂; apply ih not_eq.right
+        exact add_edge_pres_vertex _ u _ _ h₂.left h₂.right |>.mpr h₁
+      . simp
 
 
 /- Function and theorems for removing lists of edges -/
@@ -758,7 +758,7 @@ def merge (g₁ g₂ : Graph α) : Graph α :=
   let g₁_edges    := Digraph.toEdges g₁
   Digraph.add_edges (Digraph.add_vertices g₂ g₁_vertices) g₁_edges
 
-theorem merge_has_edge {g₁ g₂ : Graph α} (e : Edge α)
+theorem merge_has_edge {g₁ g₂ : Graph α} {e : Edge α}
     : e ∈ merge g₁ g₂ ↔ e ∈ g₁ ∨ e ∈ g₂ := by
   simp [merge]; apply Iff.intro <;> intro h₁
   . rw [ ←toEdges_iff
@@ -770,15 +770,34 @@ theorem merge_has_edge {g₁ g₂ : Graph α} (e : Edge α)
     . exact add_edges_pres_existing_edge _ _ e
         (add_vertices_pres_edges g₂ _ e |>.mp h₁)
 
-theorem merge_has_vertex {g₁ g₂ : Graph α} (u : α)
+theorem merge_has_vertex {g₁ g₂ : Graph α} {u : α}
     : has_vertex (merge g₁ g₂) u ↔ has_vertex g₁ u ∨ has_vertex g₂ u := by
   simp [merge]; apply Iff.intro <;> intro h₁
-  . sorry
+  . rw [←toVertices_has_vertex]
+    apply add_vertices_in_list_or_graph g₂ (toVertices g₁) u
+    have in_g₁ := add_vertices_adds g₂ _ u ∘ (toVertices_has_vertex g₁ u).mpr
+    exact add_edges_pres_vertex _ _ u (fun e e_in => by
+        if us_eq : u = e.start then
+          apply Or.inr ∘ in_g₁; simp [us_eq]
+          exact toEdges_iff _ _ |>.mp e_in |> edge_vertices _ _ _ |>.left
+        else if uf_eq : u = e.finish then
+          apply Or.inr ∘ in_g₁; simp [uf_eq]
+          exact toEdges_iff _ _ |>.mp e_in |> edge_vertices _ _ _ |>.right
+        else exact Or.inl (And.intro us_eq uf_eq)
+      ) |>.mpr h₁
   . apply Or.elim h₁ <;> intro h₁
     . apply add_edges_pres_existing_vertex _ _ u
       exact add_vertices_adds g₂ _ u (toVertices_has_vertex g₁ u |>.mpr h₁)
     . apply add_edges_pres_existing_vertex _ _ u
       exact add_vertices_pres_existing_vertex g₂ _ u h₁
+
+theorem merge_has_edge_comm {g₁ g₂ : Graph α} {e : Edge α}
+    : e ∈ merge g₁ g₂ ↔ e ∈ merge g₂ g₁ := by
+  simp [merge_has_edge]; apply Iff.intro <;> (intro h; exact Or.symm h)
+
+theorem merge_has_vertex_comm {g₁ g₂ : Graph α} {u : α}
+    : has_vertex (merge g₁ g₂) u ↔ has_vertex (merge g₂ g₁) u := by
+  simp [merge_has_vertex]; apply Iff.intro <;> (intro h; exact Or.symm h)
 
 
 /- Vertices type -/

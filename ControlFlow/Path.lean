@@ -733,6 +733,39 @@ theorem add_undirected_edge_not_use_finish_pres {g : Graph α} {u v w₁ w₂ : 
   add_edge_not_use_finish_pres
     (add_edge_not_use_start_pres path v_not_in_ps vw₁_neq) v_not_in_ps
 
+theorem add_edges_pres {g : Graph α} {u v : α} {ps : List α}
+    (edges : List (Edge α))
+    (path : g |= ps : u -> v)
+    : (add_edges g edges) |= ps : u -> v := by
+  induction path with
+  | edge h => exact .edge (add_edges_pres_existing_edge _ _ _ h)
+  | cons h₁ _path' h₂ ih =>
+    exact .cons (add_edges_pres_existing_edge _ _ _ h₁) ih h₂
+
+theorem add_vertices_pres {g : Graph α} {u v : α} {ps : List α}
+    (vertices : List α)
+    (path : g |= ps : u -> v)
+    : (add_vertices g vertices) |= ps : u -> v := by
+  induction path with
+  | edge h => exact .edge (add_vertices_pres_edges _ _ _ |>.mp h)
+  | cons h₁ _path' h₂ ih =>
+    exact .cons (add_vertices_pres_edges _ _ _ |>.mp h₁) ih h₂
+
+theorem graph_merge_pres {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+    (or_path : (g₁ |= ps : u -> v) ∨ (g₂ |= ps : u -> v))
+    : (Digraph.merge g₁ g₂) |= ps : u -> v := by
+  apply Or.elim or_path <;> (
+    intro path
+    induction path with
+    | edge h =>
+      apply .edge ∘ merge_has_edge.mpr
+      try exact Or.inl h
+      try exact Or.inr h
+    | cons h₁ path' h₂ ih =>
+      try exact .cons (merge_has_edge.mpr (Or.inl h₁)) (Or.inl path' |> ih) h₂
+      try exact .cons (merge_has_edge.mpr (Or.inr h₁)) (Or.inr path' |> ih) h₂
+  )
+
 
 /- Coercions for path preservations -/
 
@@ -749,5 +782,13 @@ instance {g : Graph α} : Coe (Path g u v ps)
 instance {g : Graph α} : Coe (Path (add_undirected_edge g e.flip) u v ps)
                              (Path (add_undirected_edge g e) u v ps) :=
   ⟨add_undirected_edge_flip_iff.mp⟩
+
+instance {g₁ g₂ : Graph α} : Coe (Path g₁ u v ps)
+                                 (Path (Digraph.merge g₁ g₂) u v ps) :=
+  ⟨graph_merge_pres ∘ Or.inl⟩
+
+instance {g₁ g₂ : Graph α} : Coe (Path g₂ u v ps)
+                                 (Path (Digraph.merge g₁ g₂) u v ps) :=
+  ⟨graph_merge_pres ∘ Or.inr⟩
 
 end Path

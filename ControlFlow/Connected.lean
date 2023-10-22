@@ -81,4 +81,29 @@ def add_vertex_finish {g : Graph α} (connected : Connected g) (e : Edge α)
     : Connected (Digraph.add_undirected_edge g e) :=
   add_vertex_start connected e.flip h₁ |> add_edge_flip_iff.mp
 
+def merge {g₁ g₂ : Graph α} {w : α}
+    (connected₁ : Connected g₁)
+    (connected₂ : Connected g₂)
+    (shared : has_vertex g₁ w ∧ has_vertex g₂ w)
+    : Connected (Digraph.merge g₁ g₂) := by
+  intro u v h₁ h₂
+  apply Or.elim (Digraph.merge_has_vertex.mp h₁) <;> (
+      intro h₁
+      apply Or.elim (Digraph.merge_has_vertex.mp h₂) <;> (
+        intro h₂
+        try exact Reachable.graph_merge_left h₁ h₂ (connected₁ u v h₁ h₂)
+        try exact Reachable.graph_merge_right h₁ h₂ (connected₂ u v h₁ h₂)
+      )
+    )
+  . have uw_reach := connected₁ u w h₁ shared.left
+      |> Reachable.graph_merge_left (g₂ := g₂) _ _
+    have wv_reach := connected₂ w v shared.right h₂
+      |> Reachable.graph_merge_right (g₁ := g₁) _ _
+    exact Reachable.trans uw_reach wv_reach
+  . have uw_reach := connected₂ u w h₁ shared.right
+      |> Reachable.graph_merge_right (g₁ := g₁) _ _
+    have wv_reach := connected₁ w v shared.left h₂
+      |> Reachable.graph_merge_left (g₂ := g₂) _ _
+    exact Reachable.trans uw_reach wv_reach
+
 end Connected

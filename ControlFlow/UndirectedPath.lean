@@ -265,6 +265,18 @@ theorem add_edge_not_use_finish_pres {g : Graph α} {u v w₁ w₂ : α} {ps : L
   , upath.pathlist_start
   ⟩
 
+theorem graph_merge_pres {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+    (ug₁ : UndirectedGraph g₁)
+    (ug₂ : UndirectedGraph g₂)
+    (or_upath : (Undirected g₁ u v ps) ∨ (Undirected g₂ u v ps))
+    : Undirected (Digraph.merge g₁ g₂) u v ps := by
+  apply Or.elim or_upath <;> (intro upath; exact
+    ⟨ upath.path
+    , UndirectedGraph.merge ug₁ ug₂
+    , upath.pathlist_start
+    ⟩
+  )
+
 
 /- Coercions for undirected path preservations -/
 

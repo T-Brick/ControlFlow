@@ -296,7 +296,7 @@ theorem undirect_pres_vertex (g : Graph α)
           apply And.intro <;> (intro h; apply (v_in e in_e))
           exact Or.inl h; exact Or.inr h
         )
-      exact add_edges_pres_vertex g _ v (Or.inl this) |>.mpr h₁
+      exact add_edges_pres_vertex g _ v (fun e h => Or.inl (this e h)) |>.mpr h₁
 
 theorem undirect_pres_edge (g : Graph α) : ∀ e ∈ g, e ∈ (undirect g).fst := by
   intro e h₁; simp [undirect]; exact add_edges_pres_existing_edge g _ e h₁
@@ -442,6 +442,21 @@ def empty : UndirectedGraph (Digraph.empty : Graph α) :=
 def trivial (w : α) : UndirectedGraph (Digraph.trivial w : Graph α) :=
   ⟨by intro u v; apply Iff.intro <;> (
         intro h; have := Digraph.trivial_no_edge _ _ h; contradiction
+      )
+  ⟩
+
+theorem merge {g₁ g₂ : Graph α}
+    (ug₁ : UndirectedGraph g₁)
+    (ug₂ : UndirectedGraph g₂)
+    : UndirectedGraph (Digraph.merge g₁ g₂) :=
+  ⟨by intro u v
+      apply Iff.intro <;> (
+        intro h; apply merge_has_edge.mpr
+        apply Or.elim (merge_has_edge.mp h) <;> (
+          intro h
+          try exact Or.inl (ug₁.undirected _ _ |>.mp h)
+          try exact Or.inr (ug₂.undirected _ _ |>.mp h)
+        )
       )
   ⟩
 

@@ -120,6 +120,28 @@ theorem add_undirected_edge_pres {g : Graph α} {u v : Digraph.Vertices g}
       exact Reachable.path ps (add_undirected_edge_flip_iff.mp path)
   )
 
+theorem graph_merge_left {g₁ g₂ : Graph α} {u v : α}
+    (u_in : has_vertex g₁ u)
+    (v_in : has_vertex g₁ v)
+    (reach : Reachable g₁ ⟨u, u_in⟩ ⟨v, v_in⟩)
+    : Reachable (Digraph.merge g₁ g₂)
+        ⟨u, (merge_has_vertex.mpr ∘ Or.inl) u_in⟩
+        ⟨v, (merge_has_vertex.mpr ∘ Or.inl) v_in⟩ := by
+  cases reach with
+  | refl => exact .refl
+  | path ps path => exact .path ps ((graph_merge_pres ∘ Or.inl) path)
+
+theorem graph_merge_right {g₁ g₂ : Graph α} {u v : α}
+    (u_in : has_vertex g₂ u)
+    (v_in : has_vertex g₂ v)
+    (reach : Reachable g₂ ⟨u, u_in⟩ ⟨v, v_in⟩)
+    : Reachable (Digraph.merge g₁ g₂)
+        ⟨u, (merge_has_vertex.mpr ∘ Or.inr) u_in⟩
+        ⟨v, (merge_has_vertex.mpr ∘ Or.inr) v_in⟩ := by
+  cases reach with
+  | refl => exact .refl
+  | path ps path => exact .path ps ((graph_merge_pres ∘ Or.inr) path)
+
 
 /- Coercions for preservation -/
 
