@@ -202,6 +202,28 @@ theorem add_edge_self_makes_cycle {g : Graph α} (ug : UndirectedGraph g) (u : �
     exact Undirected.mk path upath.undirected upath.pathlist_start
   )
 
+theorem graph_merge_pathlist_left {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+    (ug₁ : UndirectedGraph g₁)
+    (upath : Undirected (Digraph.merge g₁ g₂) u v ps)
+    (u_not_in : ¬has_vertex g₂ u)
+    (ps_in : ∀ p ∈ ps, has_vertex g₁ p ∧ ¬has_vertex g₂ p)
+    : Undirected g₁ u v ps :=
+  ⟨ Path.graph_merge_pathlist_left upath.path u_not_in ps_in
+  , ug₁
+  , upath.pathlist_start
+  ⟩
+
+theorem graph_merge_pathlist_right {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+    (ug₂ : UndirectedGraph g₂)
+    (upath : Undirected (Digraph.merge g₁ g₂) u v ps)
+    (u_not_in : ¬has_vertex g₁ u)
+    (ps_in : ∀ p ∈ ps, ¬has_vertex g₁ p ∧ has_vertex g₂ p)
+    : Undirected g₂ u v ps :=
+  ⟨ Path.graph_merge_pathlist_right upath.path u_not_in ps_in
+  , ug₂
+  , upath.pathlist_start
+  ⟩
+
 
 /- Presevation across graph changes -/
 

@@ -268,6 +268,76 @@ def prior_vertex {g : Graph α} {u v : α} {ps : List α}
   | _ :: [] => u
   | _ :: x :: _  => x
 
+def pathlist_to_edgelist (start : α) : List α → List (Edge α)
+  | [] => []
+  | u :: [] => ⟨start, u⟩ :: []
+  | u :: v :: ps => ⟨v, u⟩ :: pathlist_to_edgelist start (v::ps)
+
+def to_edgelist {g : Graph α} (_ : g |= ps : u -> v) : List (Edge α) :=
+  pathlist_to_edgelist u ps |>.reverse
+
+theorem edgelist_nonempty {g : Graph α} (path : g |= ps : u -> v)
+    : to_edgelist path ≠ [] := by
+  simp [to_edgelist]
+  intro eq
+  cases ps with
+  | nil => exact pathlist_nonempty path (refl [])
+  | cons x xs =>
+    cases xs with
+    | nil => simp [pathlist_to_edgelist] at eq
+    | cons y ys => simp [pathlist_to_edgelist] at eq
+
+theorem graph_merge_comm {g₁ g₂ : Graph α}
+    (path : Digraph.merge g₁ g₂ |= ps : u -> v)
+    : Digraph.merge g₂ g₁ |= ps : u -> v :=
+  match path with
+  | .edge h => .edge (Digraph.merge_has_edge_comm.mp h)
+  | .cons h₁ path' h₂ =>
+    .cons (Digraph.merge_has_edge_comm.mp h₁) (graph_merge_comm path') h₂
+
+theorem graph_merge_cross {g₁ g₂ : Graph α}
+    (path : Digraph.merge g₁ g₂ |= ps : u -> v)
+    (u_in_g₁ : has_vertex g₁ u)
+    (x_in_g₂ : ∃ x ∈ ps, has_vertex g₂ x)
+    : ∃ w₁ w₂, has_vertex g₁ w₁ ∧ has_vertex g₂ w₂
+             ∧ ⟨w₁, w₂⟩ ∈ Digraph.merge g₁ g₂ := by
+  induction path with
+  | edge h => next v' =>
+    simp at x_in_g₂
+    exact Exists.intro u (
+      Exists.intro v' (And.intro u_in_g₁ (And.intro x_in_g₂ h))
+    )
+  | cons h₁ path' _h₂ ih => next v' ps' w' =>
+    if w'_in_g₂ : has_vertex g₂ w' then
+      if v'_in_g₁ : has_vertex g₁ v' then
+        exact Exists.intro v' (
+          Exists.intro w' (And.intro v'_in_g₁ (And.intro w'_in_g₂ h₁))
+        )
+      else
+        have v'_in_g₂ :=
+          finish_in_graph path'
+          |> merge_has_vertex.mp
+          |> Or.resolve_left (na := v'_in_g₁)
+        have v'_in_ps' := finish_in_pathlist path'
+        exact ih (Exists.intro v' (And.intro v'_in_ps' v'_in_g₂))
+    else
+      simp [w'_in_g₂] at x_in_g₂
+      exact ih x_in_g₂
+
+theorem graph_merge_cross' {g₁ g₂ : Graph α}
+    (path : Digraph.merge g₁ g₂ |= ps : u -> v)
+    (u_in_g₂ : has_vertex g₂ u)
+    (x_in_g₁ : ∃ x ∈ ps, has_vertex g₁ x)
+    : ∃ w₁ w₂, has_vertex g₁ w₁ ∧ has_vertex g₂ w₂
+             ∧ ⟨w₂, w₁⟩ ∈ Digraph.merge g₁ g₂ :=
+  Exists.elim (graph_merge_cross (graph_merge_comm path) u_in_g₂ x_in_g₁)
+    (fun w₁ h => Exists.elim h (fun w₂ h =>
+      Exists.intro w₂ <| Exists.intro w₁ <|
+        And.intro h.right.left (And.intro h.left
+          (Digraph.merge_has_edge_comm.mp h.right.right)
+        )
+    ))
+
 structure Cyclic (g : Graph α) (u : α) (ps : List α) : Prop where
   cycle : g |= ps : u -> u
 
