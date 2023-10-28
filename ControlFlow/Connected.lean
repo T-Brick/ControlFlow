@@ -106,4 +106,17 @@ def merge {g₁ g₂ : Graph α} {w : α}
       |> Reachable.graph_merge_left (g₂ := g₂) _ _
     exact Reachable.trans uw_reach wv_reach
 
+def merge_disjoint {g₁ g₂ : Graph α} {u v : α}
+    (u_in_g₁ : has_vertex g₁ u)
+    (v_in_g₂ : has_vertex g₂ v)
+    (disjoint_left : ∀ w, has_vertex g₁ w → ¬has_vertex g₂ w)
+    (disjoint_right : ∀ w, has_vertex g₂ w → ¬has_vertex g₁ w)
+    : ¬Connected (Digraph.merge g₁ g₂) := by
+  intro connected
+  have := connected u v
+    (Digraph.merge_has_vertex.mpr (Or.inl u_in_g₁))
+    (Digraph.merge_has_vertex.mpr (Or.inr v_in_g₂))
+  exact Reachable.graph_merge_disjoint u_in_g₁ v_in_g₂
+    disjoint_left disjoint_right this
+
 end Connected

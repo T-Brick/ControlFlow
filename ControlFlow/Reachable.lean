@@ -142,6 +142,26 @@ theorem graph_merge_right {g₁ g₂ : Graph α} {u v : α}
   | refl => exact .refl
   | path ps path => exact .path ps ((graph_merge_pres ∘ Or.inr) path)
 
+theorem graph_merge_disjoint {g₁ g₂ : Graph α} {u v : α}
+    (u_in_g₁ : has_vertex g₁ u)
+    (v_in_g₂ : has_vertex g₂ v)
+    (disjoint_left : ∀ w, has_vertex g₁ w → ¬has_vertex g₂ w)
+    (disjoint_right : ∀ w, has_vertex g₂ w → ¬has_vertex g₁ w)
+    : ¬Reachable (Digraph.merge g₁ g₂)
+          ⟨u, Digraph.merge_has_vertex.mpr (Or.inl u_in_g₁)⟩
+          ⟨v, Digraph.merge_has_vertex.mpr (Or.inr v_in_g₂)⟩ := by
+  intro reach
+  cases reach with
+  | refl => exact disjoint_left u u_in_g₁ v_in_g₂
+  | path ps path =>
+    have := Path.graph_merge_cross path u_in_g₁
+      (Exists.intro v ⟨Path.finish_in_pathlist path, v_in_g₂⟩)
+    apply Exists.elim this; intro w₁ this
+    apply Exists.elim this; intro w₂ h
+    apply Or.elim (Digraph.merge_has_edge.mp h.right.right) <;> intro e_in
+    . exact disjoint_left _ (edge_vertices _ _ _ e_in).right h.right.left
+    . exact disjoint_right _ (edge_vertices _ _ _ e_in).left h.left
+
 
 /- Coercions for preservation -/
 

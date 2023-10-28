@@ -115,10 +115,8 @@ theorem merge_disjoint {g₁ g₂ : Graph α}
     : Acyclic (UndirectedGraph.merge ug₁ ug₂) := by
   intro v eps
   apply Exists.elim eps; intro ps upath
-  have h₁ := acyclic₁ v
-  have h₂ := acyclic₂ v
-  apply Or.elim (Path.finish_in_graph upath.path |> merge_has_vertex.mp) <;>
-    intro v_in
+  apply Or.elim (Path.finish_in_graph upath.path |> merge_has_vertex.mp)
+      <;> intro v_in
   . have v_not_in := disjoint_left v v_in
     have := Path.Undirected.graph_merge_pathlist_left ug₁ upath v_not_in
       (fun x h => by
@@ -133,7 +131,7 @@ theorem merge_disjoint {g₁ g₂ : Graph α}
             disjoint_edge w₁ w₂ (And.intro h.left h.right.left) h.right.right
           contradiction
       )
-    exact h₁ (Exists.intro ps this)
+    exact acyclic₁ v (Exists.intro ps this)
   . have v_not_in := disjoint_right v v_in
     have := Path.Undirected.graph_merge_pathlist_right ug₂ upath v_not_in
       (fun x h => by
@@ -151,7 +149,7 @@ theorem merge_disjoint {g₁ g₂ : Graph α}
           contradiction
         . exact And.intro (disjoint_right x x_in) x_in
       )
-    exact h₂ (Exists.intro ps this)
+    exact acyclic₂ v (Exists.intro ps this)
 
 
 instance {g : Graph α} {e : Edge α} {ug : UndirectedGraph g}
