@@ -91,19 +91,19 @@ def merge {g₁ g₂ : Graph α} {w : α}
       intro h₁
       apply Or.elim (Digraph.merge_has_vertex.mp h₂) <;> (
         intro h₂
-        try exact Reachable.graph_merge_left h₁ h₂ (connected₁ u v h₁ h₂)
-        try exact Reachable.graph_merge_right h₁ h₂ (connected₂ u v h₁ h₂)
+        try exact Reachable.graph_merge_left _ h₁ h₂ (connected₁ u v h₁ h₂)
+        try exact Reachable.graph_merge_right _ h₁ h₂ (connected₂ u v h₁ h₂)
       )
     )
   . have uw_reach := connected₁ u w h₁ shared.left
-      |> Reachable.graph_merge_left (g₂ := g₂) _ _
+      |> Reachable.graph_merge_left g₂ _ _
     have wv_reach := connected₂ w v shared.right h₂
-      |> Reachable.graph_merge_right (g₁ := g₁) _ _
+      |> Reachable.graph_merge_right g₁ _ _
     exact Reachable.trans uw_reach wv_reach
   . have uw_reach := connected₂ u w h₁ shared.right
       |> Reachable.graph_merge_right (g₁ := g₁) _ _
     have wv_reach := connected₁ w v shared.left h₂
-      |> Reachable.graph_merge_left (g₂ := g₂) _ _
+      |> Reachable.graph_merge_left g₂ _ _
     exact Reachable.trans uw_reach wv_reach
 
 def merge_disjoint {g₁ g₂ : Graph α} {u v : α}
@@ -118,5 +118,64 @@ def merge_disjoint {g₁ g₂ : Graph α} {u v : α}
     (Digraph.merge_has_vertex.mpr (Or.inr v_in_g₂))
   exact Reachable.graph_merge_disjoint u_in_g₁ v_in_g₂
     disjoint_left disjoint_right this
+
+def merge_add_edge {g₁ g₂ : Graph α} {u v : α}
+    (connected₁ : Connected g₁)
+    (connected₂ : Connected g₂)
+    (u_in_g₁ : has_vertex g₁ u)
+    (v_in_g₂ : has_vertex g₂ v)
+    : Connected (add_undirected_edge (Digraph.merge g₁ g₂) ⟨u, v⟩) := by
+  intro w₁ w₂ w₁_in w₂_in
+  have vertex_in
+      : ∀ w, has_vertex (add_undirected_edge (Digraph.merge g₁ g₂) ⟨u, v⟩) w
+           → (has_vertex g₁ w) ∨ (has_vertex g₂ w) := by
+    intro w w_in
+    if uw_eq : w = u then rw [uw_eq]; exact Or.inl u_in_g₁ else
+    if vw_eq : w = v then rw [vw_eq]; exact Or.inr v_in_g₂ else
+    exact add_undirected_edge_pres_vertex _ w u v uw_eq vw_eq
+      |>.mpr w_in
+      |> Digraph.merge_has_vertex.mp
+  have uv_reach :=
+    Reachable.edge'
+      (add_undirected_edge_adds (Digraph.merge g₁ g₂) ⟨u, v⟩).left
+      |>.snd.snd
+  have vu_reach :=
+    Reachable.edge'
+      (add_undirected_edge_adds (Digraph.merge g₁ g₂) ⟨u, v⟩).right
+      |>.snd.snd
+
+  if w₁_in_g₁ : has_vertex g₁ w₁ then
+    if w₂_in_g₁ : has_vertex g₁ w₂ then
+      exact connected₁ w₁ w₂ w₁_in_g₁ w₂_in_g₁
+         |> Reachable.graph_merge_left _ w₁_in_g₁ w₂_in_g₁
+         |> Reachable.add_undirected_edge_pres _
+    else
+      have w₂_in_g₂ := Or.resolve_left (vertex_in w₂ w₂_in) w₂_in_g₁
+      have w₁u_reach :=
+        connected₁ w₁ u w₁_in_g₁ u_in_g₁
+        |> Reachable.graph_merge_left g₂ w₁_in_g₁ u_in_g₁
+        |> Reachable.add_undirected_edge_pres ⟨u, v⟩
+      have vw₂_reach :=
+        connected₂ v w₂ v_in_g₂ w₂_in_g₂
+        |> Reachable.graph_merge_right g₁ v_in_g₂ w₂_in_g₂
+        |> Reachable.add_undirected_edge_pres ⟨u, v⟩
+      exact Reachable.trans w₁u_reach (Reachable.trans uv_reach vw₂_reach)
+  else
+    have w₁_in_g₂ := Or.resolve_left (vertex_in w₁ w₁_in) w₁_in_g₁
+    if w₂_in_g₁ : has_vertex g₁ w₂ then
+      have uw₂_reach :=
+        connected₁ u w₂ u_in_g₁ w₂_in_g₁
+        |> Reachable.graph_merge_left g₂ u_in_g₁ w₂_in_g₁
+        |> Reachable.add_undirected_edge_pres ⟨u, v⟩
+      have w₁v_reach :=
+        connected₂ w₁ v w₁_in_g₂ v_in_g₂
+        |> Reachable.graph_merge_right g₁ w₁_in_g₂ v_in_g₂
+        |> Reachable.add_undirected_edge_pres ⟨u, v⟩
+      exact Reachable.trans w₁v_reach (Reachable.trans vu_reach uw₂_reach)
+    else
+      have w₂_in_g₂ := Or.resolve_left (vertex_in w₂ w₂_in) w₂_in_g₁
+      exact connected₂ w₁ w₂ w₁_in_g₂ w₂_in_g₂
+         |> Reachable.graph_merge_right _ w₁_in_g₂ w₂_in_g₂
+         |> Reachable.add_undirected_edge_pres _
 
 end Connected
