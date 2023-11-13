@@ -104,8 +104,7 @@ theorem add_edge_start {g : Graph α}
     |> (add_edge_flip_iff ug).mp
 
 theorem merge_disjoint {g₁ g₂ : Graph α}
-    {ug₁ : UndirectedGraph g₁}
-    {ug₂ : UndirectedGraph g₂}
+    {ug₁ : UndirectedGraph g₁} {ug₂ : UndirectedGraph g₂}
     (acyclic₁ : Acyclic ug₁)
     (acyclic₂ : Acyclic ug₂)
     (disjoint_left : ∀ v, has_vertex g₁ v → ¬has_vertex g₂ v)
@@ -151,6 +150,23 @@ theorem merge_disjoint {g₁ g₂ : Graph α}
       )
     exact acyclic₂ v (Exists.intro ps this)
 
+theorem merge_disjoint_add_edge {g₁ g₂ : Graph α} {u v : α}
+    {ug₁ : UndirectedGraph g₁} {ug₂ : UndirectedGraph g₂}
+    (acyclic₁ : Acyclic ug₁)
+    (acyclic₂ : Acyclic ug₂)
+    (u_in_g₁ : has_vertex g₁ u)
+    (v_in_g₂ : has_vertex g₂ v)
+    (disjoint_left : ∀ v, has_vertex g₁ v → ¬has_vertex g₂ v)
+    (disjoint_right : ∀ v, has_vertex g₂ v → ¬has_vertex g₁ v)
+    (disjoint_edge : ∀ u v, has_vertex g₁ u ∧ has_vertex g₂ v
+                          → ⟨u, v⟩ ∉ Digraph.merge g₁ g₂)
+    : Acyclic (add_edge (merge ug₁ ug₂) ⟨u, v⟩) := by
+  intro w eps
+  apply Exists.elim eps; intro ps upath
+  have :=
+    merge_disjoint acyclic₁ acyclic₂ disjoint_left disjoint_right disjoint_edge
+  simp at this
+  sorry
 
 instance {g : Graph α} {e : Edge α} {ug : UndirectedGraph g}
     : Coe (Acyclic (add_edge ug e.flip))

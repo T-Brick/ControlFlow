@@ -216,3 +216,14 @@ theorem iff_acyclic_add_cycle {g : Graph α} (ug : UndirectedGraph g)
           Path.Undirected.add_edge_not_use_start_pres ug upath u_in_ps uw_eq
         have := h₁.left w (Exists.intro ps upath_ww)
         contradiction
+
+structure Rooted (g : Graph α) where
+  root : α
+  root_in_g : has_vertex g root
+  tree : Tree g
+
+namespace Rooted
+
+def orient {g : Graph α} (tree : Rooted g) (root_sink : Bool)
+    : (g' : Graph α) ×' Digraph.Oriented g' :=
+  sorry

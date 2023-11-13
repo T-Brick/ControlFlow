@@ -344,15 +344,14 @@ theorem in_succ_iff_in_pred {g : Graph α} {u v : α}
 
 
 /- Neighbor theorems -/
-
 theorem neighbors_edge_in_graph {g : Graph α} {u v : α}
     : v ∈ neighbors g u ↔ ⟨u, v⟩ ∈ g ∨ ⟨v, u⟩ ∈ g := by
   simp [neighbors]
-  apply Iff.intro <;> intro h₁ <;> apply Or.elim h₁ <;> intro h₂
-  . exact Or.inl (succ_edge_in_graph.mp h₂)
-  . exact Or.inr (pred_edge_in_graph.mp h₂)
-  . exact Or.inl (succ_edge_in_graph.mpr h₂)
-  . exact Or.inr (pred_edge_in_graph.mpr h₂)
+  apply Iff.intro <;> intro h₁
+  . exact Or.imp succ_edge_in_graph.mp pred_edge_in_graph.mp
+      (List.mem_union_iff.mp h₁)
+  . apply List.mem_union_iff.mpr
+    exact Or.imp succ_edge_in_graph.mpr pred_edge_in_graph.mpr h₁
 
 theorem neighbors_in_graph {g : Graph α} {u v : α} (h₁ : v ∈ neighbors g u)
     : has_vertex g v := by
@@ -512,20 +511,26 @@ theorem all_neighbors_sound (g : Graph α) (vertices : List α)
   case nil => simp at h₁
   case cons x xs ih =>
     if x_eq_start : x = e.start then
+      apply List.mem_union_iff.mpr
       apply Or.inl
+      apply List.mem_union_iff.mpr
       apply Or.inl
       simp [x_eq_start]
       exact (out_edges_has_edge g e.start e.finish).mpr h₂
     else if x_eq_finish : x = e.finish then
+      apply List.mem_union_iff.mpr
       apply Or.inl
+      apply List.mem_union_iff.mpr
       apply Or.inr
       simp [x_eq_finish]
       exact (in_edges_has_edge g e.start e.finish).mpr h₂
     else
       apply Or.elim h₁ <;> intro h₁
       . simp [neq_symm x_eq_start] at h₁
+        apply List.mem_union_iff.mpr
         exact Or.inr (ih (Or.inl h₁))
       . simp [neq_symm x_eq_finish] at h₁
+        apply List.mem_union_iff.mpr
         exact Or.inr (ih (Or.inr h₁))
 
 theorem all_neighbors_complete (g : Graph α) (vertices : List α)
@@ -533,8 +538,8 @@ theorem all_neighbors_complete (g : Graph α) (vertices : List α)
   intro e h₁
   induction vertices <;> simp [all_neighbors] at h₁
   case cons x xs ih =>
-    apply Or.elim h₁ <;> intro h₁
-    . apply Or.elim h₁ <;> intro h₁
+    apply Or.elim (List.mem_union_iff.mp h₁) <;> intro h₁
+    . apply Or.elim (List.mem_union_iff.mp h₁) <;> intro h₁
       . have e_start_eq_x := out_edges_start g e x h₁
         simp [←e_start_eq_x] at h₁
         exact out_edges_has_edge g e.start e.finish |>.mp h₁

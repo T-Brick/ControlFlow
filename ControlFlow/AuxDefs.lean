@@ -148,14 +148,14 @@ def List.first_common [DecidableEq α]
 theorem List.disjoint_reverse_left {l₁ l₂ : List α}
     : List.Disjoint l₁ l₂ ↔ List.Disjoint l₁.reverse l₂ := by
   apply Iff.intro <;> intro h₁ a h₂ <;> rw [Disjoint] at * <;> apply h₁
-  . exact List.mem_reverse a l₁ |>.mp h₂
-  . exact List.mem_reverse a l₁ |>.mpr h₂
+  . exact List.mem_reverse |>.mp h₂
+  . exact List.mem_reverse |>.mpr h₂
 
 theorem List.disjoint_reverse_right {l₁ l₂ : List α}
     : List.Disjoint l₁ l₂ ↔ List.Disjoint l₁ l₂.reverse := by
   apply Iff.intro <;> intro h₁ a h₂ h₃ <;> rw [Disjoint] at * <;> apply h₁ h₂
-  . exact List.mem_reverse a l₂ |>.mp h₃
-  . exact List.mem_reverse a l₂ |>.mpr h₃
+  . exact List.mem_reverse |>.mp h₃
+  . exact List.mem_reverse |>.mpr h₃
 
 theorem neq_symm [DecidableEq α] {x y : α} (h₁ : ¬x = y) : (¬y = x) :=
   fun h₂ => h₁ (Eq.symm h₂)

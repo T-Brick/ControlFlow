@@ -98,9 +98,9 @@ theorem pathlist_nonempty {g : Graph α} {u v : α} {ps : List α}
 theorem in_pathlist_in_graph {g : Graph α} {v w : α}
     (path : g |= nodes : v -> w) : ∀ u ∈ nodes, g |= u := by
   intro u h₁
-  induction path <;> simp
+  induction path
   case edge h₂ =>
-    cases h₁ <;> simp [*] at *
+    cases h₁
     case head => exact (edge_vertices g _ _ h₂).right
     case tail _ _ => contradiction
   case cons w h₂ _path₁ h₃ ih =>
@@ -110,13 +110,13 @@ theorem in_pathlist_in_graph {g : Graph α} {v w : α}
 
 theorem start_in_graph {g : Graph α} {u v : α}
     (path : g |= nodes : u -> v) : g |= u := by
-  induction path <;> simp
+  induction path
   case edge h₁ => exact (edge_vertices g _ _ h₁).left
   case cons ih => exact ih
 
 theorem finish_in_graph {g : Graph α} {u v : α}
     (path : g |= nodes : u -> v) : g |= v := by
-  cases path <;> simp
+  cases path
   case edge h₁ => exact (edge_vertices g _ _ h₁).right
   case cons path₁ h₁ h₂ => exact (edge_vertices g _ _ h₁).right
 
@@ -126,7 +126,7 @@ theorem finish_in_pathlist {g : Graph α} {u v : α} {ps : List α}
 
 theorem finish_has_edge {g : Graph α} {u v : α}
     (path : g |= nodes : u -> v) : ∃w, ⟨w, v⟩ ∈ g := by
-  cases path <;> simp
+  cases path
   case edge h₁ => exact Exists.intro u h₁
   case cons w _ path₁ h₁ h₂ => exact Exists.intro w h₁
 
