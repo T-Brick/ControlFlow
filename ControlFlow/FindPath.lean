@@ -167,7 +167,7 @@ private def get_succ_frontier
           intro n h₃
           have last := f.nodes_visited n
           cases h₃ <;> simp [*] at *
-          case tail _ h₄ => simp at h₄; apply Or.inr (last h₄)
+          case tail _ h₄ => apply Or.inr (last h₄)
       , cur_not_visit := by intro h₃; apply h₂.left h₃
       , nodes_not_skip := by
           intro n h₃
