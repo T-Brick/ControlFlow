@@ -863,17 +863,33 @@ theorem trivial_no_edge (v : α)
     |> Iff.not |>.mp (empty_edges e) h₁
 
 def of_succ (vertices : List α) (succ : α → List α) : Graph α :=
-  add_edges empty (vertices.bind (fun v => succ v |>.map (v, ·)))
+  add_edges (add_vertices empty vertices)
+            (vertices.bind (fun v => succ v |>.map (v, ·)))
+
 def of_pred (vertices : List α) (pred : α → List α) : Graph α :=
-  add_edges empty (vertices.bind (fun v => pred v |>.map (·, v)))
+  add_edges (add_vertices empty vertices)
+            (vertices.bind (fun v => pred v |>.map (·, v)))
+
+theorem of_succ_vertices_in {v : α} {vertices : List α} {succ : α → List α}
+    : v ∈ vertices → has_vertex (of_succ vertices succ : Graph α) v :=
+  add_edges_pres_existing_vertex _ _ v ∘ add_vertices_adds _ _ v
+
+theorem of_pred_vertices_in {v : α} {vertices : List α} {succ : α → List α}
+    : v ∈ vertices → has_vertex (of_pred vertices succ : Graph α) v :=
+  add_edges_pres_existing_vertex _ _ v ∘ add_vertices_adds _ _ v
+
+def verticesToString [ToString α]
+    (vertices : List α)
+    (succ : α → List α)
+    (spacer := "\n")
+    : String :=
+  vertices.map (fun v => s!"{v} | {succ v |>.map toString}")
+  |> String.intercalate spacer
 
 nonrec def toString [ToString α] (g : Graph α) : String :=
-  Digraph.toVertices g
-  |>.map (fun v =>
-    let next := succ g v |>.map toString
-    s!"{v} | {next}"
-    )
-  |> String.intercalate "\n"
+  "Digraph:\n\t".append (
+    verticesToString (toVertices g) (succ g) (spacer := "\n\t")
+  )
 instance [ToString α] : ToString (Graph α) := ⟨toString⟩
 
 def vertices_toEdges : List α → List (Edge α)

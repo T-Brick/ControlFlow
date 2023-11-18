@@ -32,6 +32,15 @@ namespace CFG
     This can be useful for specific optimisations
  -/
 
+nonrec def toString [ToString α] (cfg : CFG α Graph) : String :=
+  s!"CFG (start = {cfg.start.val}):\n\t".append (
+    Digraph.verticesToString
+      (Digraph.toVertices cfg.digraph)
+      (Digraph.succ cfg.digraph)
+      (spacer := "\n\t")
+  )
+instance [ToString α] : ToString (CFG α Graph) := ⟨toString⟩
+
 namespace Dataflow
 
 inductive Combine where | may | must
