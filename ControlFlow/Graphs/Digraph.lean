@@ -862,6 +862,10 @@ theorem trivial_no_edge (v : α)
   exact add_vertex_pres_edges (empty : Graph α) v e
     |> Iff.not |>.mp (empty_edges e) h₁
 
+def of_succ (vertices : List α) (succ : α → List α) : Graph α :=
+  add_edges empty (vertices.bind (fun v => succ v |>.map (v, ·)))
+def of_pred (vertices : List α) (pred : α → List α) : Graph α :=
+  add_edges empty (vertices.bind (fun v => pred v |>.map (·, v)))
 
 nonrec def toString [ToString α] (g : Graph α) : String :=
   Digraph.toVertices g
