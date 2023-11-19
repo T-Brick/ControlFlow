@@ -38,8 +38,12 @@ def FuncGraphType.add_edge : FuncGraphType α → Edge α → FuncGraphType α :
     ⟨ e.start :: e.finish :: g.vertex_list.filter (fun v => v ≠ e.start && v ≠ e.finish)
     , fun v => v = e.start || v = e.finish || g.vertices v
     , fun e' => e = e' || g.edges e'
-    , fun v => if v = e.start then e :: g.out_edges v else g.out_edges v
-    , fun v => if v = e.finish then e :: g.in_edges v else g.in_edges v
+    , fun v =>
+        let res := g.out_edges v
+        if v = e.start && ¬res.elem e then e :: res else res
+    , fun v =>
+        let res := g.in_edges v
+        if v = e.finish && ¬res.elem e then e :: res else res
     , by
         intro u v h₁
         have h₂ := g.edge_vertices u v
@@ -58,23 +62,41 @@ def FuncGraphType.add_edge : FuncGraphType α → Edge α → FuncGraphType α :
           case isFalse neq => simp [*] at *; exact Or.inr h₂
           case isTrue eq =>
             simp [←eq] at h₂
-            cases h₂
-            case inl h₃ => simp [h₃]
-            case inr _ h₃ => exact Or.inr (h₁.mp h₃)
+            if e_in : e ∈ out_edges g u then
+              simp [e_in] at h₂; exact Or.inr (h₁.mp h₂)
+            else
+              simp [e_in] at h₂
+              cases h₂
+              case inl h₃ => simp [h₃]
+              case inr _ h₃ => exact Or.inr (h₁.mp h₃)
         . cases decEq u e.start <;> simp [*] at *
           case isFalse neq =>
             apply Or.elim h₂ <;> intro h₃ <;> simp [*] at *
           case isTrue eq =>
-            apply Or.elim h₂ <;> intro h₃
-            . simp [←h₃]
-            . exact Or.inr (h₁.mpr h₃)
+            if e_in : e ∈ out_edges g e.start then
+              simp [e_in]
+              apply Or.elim h₂ <;> intro h₃
+              . simp [e_in, ←h₃]
+              . exact h₁.mpr h₃
+            else
+              simp [e_in]
+              apply Or.elim h₂ <;> intro h₃
+              . simp [e_in, ←h₃]
+              . exact Or.inr (h₁.mpr h₃)
     , by
         intro e' u h₁
         simp [*] at *
         have h₂ := g.out_edges_start e' u
         cases decEq u e.start <;> simp [*] at *
         case isFalse neq => exact h₂ h₁
-        case isTrue eq => apply Or.elim h₁ <;> intro h₃ <;> simp [*]
+        case isTrue eq =>
+          if e_in : e ∈ out_edges g e.start then
+            simp [e_in] at h₁; exact h₂ h₁
+          else
+            simp [e_in] at h₁
+            apply Or.elim h₁ <;> intro h₁
+            . simp [h₁]
+            . exact h₂ h₁
     , by
         intro u v
         have h₁ := g.in_edges_has_edge u v
@@ -83,23 +105,42 @@ def FuncGraphType.add_edge : FuncGraphType α → Edge α → FuncGraphType α :
           case isFalse neq => simp [*] at *; exact Or.inr h₂
           case isTrue eq =>
             simp [←eq] at h₂
-            cases h₂
-            case inl h₃ => simp [h₃]
-            case inr _ h₃ => exact Or.inr (h₁.mp h₃)
+            if e_in : e ∈ in_edges g v then
+              simp [e_in] at h₂
+              exact Or.inr (h₁.mp h₂)
+            else
+              simp [e_in] at h₂
+              cases h₂
+              case inl h₃ => simp [h₃]
+              case inr _ h₃ => exact Or.inr (h₁.mp h₃)
         . cases decEq v e.finish <;> simp [*] at *
           case isFalse neq =>
             apply Or.elim h₂ <;> intro h₃ <;> simp [*] at *
           case isTrue eq =>
-            apply Or.elim h₂ <;> intro h₃
-            . simp [←h₃]
-            . exact Or.inr (h₁.mpr h₃)
+            if e_in : e ∈ in_edges g e.finish then
+              simp [e_in]
+              apply Or.elim h₂ <;> intro h₃
+              . simp [e_in, ←h₃]
+              . exact h₁.mpr h₃
+            else
+              simp [e_in]
+              apply Or.elim h₂ <;> intro h₃
+              . simp [e_in, ←h₃]
+              . exact Or.inr (h₁.mpr h₃)
     , by
         intro e' u h₁
         simp [*] at *
         have h₂ := g.in_edges_finish e' u
         cases decEq u e.finish <;> simp [*] at *
         case isFalse neq => exact h₂ h₁
-        case isTrue eq => apply Or.elim h₁ <;> intro h₃ <;> simp [*]
+        case isTrue eq =>
+          if e_in : e ∈ in_edges g e.finish then
+            simp [e_in] at h₁; exact h₂ h₁
+          else
+            simp [e_in] at h₁
+            apply Or.elim h₁ <;> intro h₁
+            . simp [h₁]
+            . exact h₂ h₁
     , by
         intro v
         let p := (fun v => v ≠ e.start && v ≠ e.finish)
