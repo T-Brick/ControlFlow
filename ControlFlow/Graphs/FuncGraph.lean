@@ -35,7 +35,8 @@ def FuncGraphType.empty : FuncGraphType α :=
 @[reducible]
 def FuncGraphType.add_edge : FuncGraphType α → Edge α → FuncGraphType α :=
   fun g e =>
-    ⟨ e.start :: e.finish :: g.vertex_list.filter (fun v => v ≠ e.start && v ≠ e.finish)
+    ⟨ let vertices' := e.finish :: g.vertex_list.filter (fun v => v ≠ e.start && v ≠ e.finish)
+      if e.start = e.finish then vertices' else e.start :: vertices'
     , fun v => v = e.start || v = e.finish || g.vertices v
     , fun e' => e = e' || g.edges e'
     , fun v =>
@@ -146,16 +147,30 @@ def FuncGraphType.add_edge : FuncGraphType α → Edge α → FuncGraphType α :
         let p := (fun v => v ≠ e.start && v ≠ e.finish)
         have := List.filter_preserve_in p g.vertex_list v
         have h₁ := g.toList_has_vertex v
-        apply Iff.intro <;> intro h₂ <;> simp [*] at *
-        . apply Or.elim h₂ <;> intro h₃
-          . exact Or.inl h₃
-          . apply Or.elim h₂ <;> intro h₄ <;> simp [*] at *
-            exact Or.inr this.left
-        . apply Or.elim h₂ <;> intro h₃ <;> simp [*] at *
-          cases decEq v e.start <;> simp [*]
-          case isFalse neq₁ =>
-            cases decEq v e.finish <;> simp [*]
-            case isFalse neq₂ => apply this.mp; apply And.intro neq₁ neq₂
+        if eq : e.start = e.finish then
+          apply Iff.intro <;> intro h₂ <;> simp [*] at *
+          . apply Or.elim h₂ <;> intro h₃
+            . exact Or.inl h₃
+            . apply Or.elim h₂ <;> intro h₄ <;> simp [*] at *
+              exact Or.inr this.left
+          . apply Or.elim h₂ <;> intro h₃ <;> simp [*] at *
+            cases decEq v e.start
+            case isFalse neq₁ =>
+              cases decEq v e.finish <;> simp [*]
+              case isFalse neq₂ => exact this.mp neq₂
+            case isTrue eq₁ => rw [eq] at eq₁; exact Or.inl eq₁
+        else
+          apply Iff.intro <;> intro h₂ <;> simp [*] at *
+          . apply Or.elim h₂ <;> intro h₃
+            . exact Or.inl h₃
+            . apply Or.elim h₂ <;> intro h₄ <;> simp [*] at *
+              exact Or.inr this.left
+          . apply Or.elim h₂ <;> intro h₃ <;> simp [*] at *
+            cases decEq v e.start
+            case isFalse neq₁ =>
+              cases decEq v e.finish <;> simp [*]
+              case isFalse neq₂ => exact this.mp ⟨neq₁, neq₂⟩
+            case isTrue eq₁ => exact (Or.inl ∘ Or.inl) eq₁
     ⟩
 
 @[reducible]
