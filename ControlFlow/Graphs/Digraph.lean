@@ -641,8 +641,8 @@ theorem rem_vertices_removes_vertex (g : Graph α) (vertices : List α)
       rw [eq] at h₂; exact rem_vertex_removes_vertex _ x h₂
     else
       simp [eq] at h₁
-      apply ih h₁
-      exact rem_vertex_pres_vertex (rem_vertices g xs) v x eq |>.mpr h₂
+      have := rem_vertex_pres_vertex (rem_vertices g xs) v x eq |>.mpr h₂
+      simp [ih h₁] at this
 
 theorem rem_vertices_removes_edge (g : Graph α) (vertices : List α)
     : ∀ u, ∀ v ∈ vertices, ⟨u, v⟩ ∉ rem_vertices g vertices
@@ -695,7 +695,9 @@ theorem rem_vertices_pres_nonexisting_vertex (g : Graph α) (vertices : List α)
   case cons x xs ih =>
     if eq : v = x
     then simp [eq, rem_vertex_removes_vertex (rem_vertices g xs) x] at h₂
-    else exact rem_vertex_pres_vertex _ _ _ eq |>.mpr h₂ |> ih
+    else
+      have := rem_vertex_pres_vertex _ _ _ eq |>.mpr h₂
+      simp [ih] at this
 
 theorem in_rem_vertices_neq (g : Graph α) (vertices : List α)
     : ∀ v, has_vertex (rem_vertices g vertices) v → v ∉ vertices := by
