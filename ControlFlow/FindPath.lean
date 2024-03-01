@@ -392,8 +392,7 @@ def explore
           sorry
         )
 
-termination_by explore visited frontier h₁ h₂ h₃ =>
-  (Digraph.toVertices g).length + 1 - visited.length
+termination_by (Digraph.toVertices g).length + 1 - visited.length
 
 def find_path
     (g : Graph α)
