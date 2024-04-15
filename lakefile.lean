@@ -15,4 +15,4 @@ lean_exe controlflow {
 }
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4" @ "v4.6.1"
+  "https://github.com/leanprover-community/mathlib4" @ "v4.7.0"

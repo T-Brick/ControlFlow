@@ -27,7 +27,6 @@ theorem _root_.List.filter_preserve_in [DecidableEq α]
     have h₁ := h.left
     have h₂ := h.right
     induction l <;> simp [List.filter, *]
-    case nil => contradiction
     case cons x xs ih =>
       cases h₃ : p x <;> simp [h₃]
       case false =>

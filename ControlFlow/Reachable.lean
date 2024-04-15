@@ -47,7 +47,7 @@ def edge' {g : Graph α} {e : Edge α} (e_in : e ∈ g)
   let evs_in := edge_vertices g e.start e.finish e_in
   let u : Vertices g := ⟨e.start, evs_in.left⟩
   let v : Vertices g := ⟨e.finish, evs_in.right⟩
-  let uv_in : ⟨u.val, v.val⟩ ∈ g := by simp [*]; exact e_in
+  let uv_in : ⟨u.val, v.val⟩ ∈ g := by simp [*]
   ⟨evs_in.left, evs_in.right, edge uv_in⟩
 
 theorem toPath {g : Graph α} {u v : Vertices g}

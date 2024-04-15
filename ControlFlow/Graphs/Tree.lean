@@ -126,7 +126,7 @@ where walker (itree : _root_.Tree α)
         by simp [eq] at h₁; exact Nat.not_succ_le_self _ h₁
       else
         add_undirected_edge_pres_vertex tree (m, y) x' ancestor
-          (by simp [eq]) (by intro eq'; rw [eq'] at res; exact res ancestor_in)
+          (by simp [x', eq]) (by intro eq'; rw [eq'] at res; exact res ancestor_in)
         |>.mpr h₂ |> res
 
     have lres :=

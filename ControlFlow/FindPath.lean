@@ -24,7 +24,9 @@ deriving DecidableEq
 
 @[simp] theorem Visited.in_list {g : Graph α} {visited : List (Visited g s)}
     (h : u ∈ Visited.toList visited)
-    : ∃ v ∈ visited, v.node = u := by simp at *; exact h
+    : ∃ v ∈ visited, v.node = u := by
+  simp only [toList, List.mem_map] at h
+  exact h
 
 instance : Membership α (List (Visited (g : Graph α) s)) where
   mem v visits := v ∈ Visited.toList visits
@@ -60,7 +62,7 @@ deriving DecidableEq
     {fs : List (Frontier g visited skip s)}
     {u : α}
     : u ∈ Frontier.toList (f::fs) → u = f.cur ∨ u ∈ Frontier.toList fs := by
-  simp
+  simp only [toList, List.map_cons, List.mem_cons, List.mem_map, imp_self]
 
 @[simp] theorem Frontier.toList_mem_append
     {g : Graph α}
@@ -68,7 +70,7 @@ deriving DecidableEq
     {frontier₁ frontier₂ : List (Frontier g visited skip s)}
     : v ∈ Frontier.toList (frontier₁ ++ frontier₂)
       ↔ v ∈ Frontier.toList frontier₁ ∨ v ∈ Frontier.toList frontier₂ := by
-  simp
+  simp only [toList, List.map_append, List.mem_append, List.mem_map]
 
 @[simp] theorem Frontier.in_list
     {g : Graph α}
@@ -76,7 +78,7 @@ deriving DecidableEq
     {frontier : List (Frontier g visited skip s)}
     (h : v ∈ Frontier.toList frontier)
     : ∃ f ∈ frontier, f.cur = v := by
-  simp at *
+  simp only [toList, List.mem_map] at h
   exact h
 
 -- todo: great name
@@ -87,7 +89,8 @@ deriving DecidableEq
     {f : Frontier g visited skip s}
     (h₁ : f ∈ frontier)
     : f.cur ∈ Frontier.toList frontier := by
-  simp; exact Exists.intro f (And.intro h₁ rfl)
+  simp only [toList, List.mem_map];
+  exact Exists.intro f (And.intro h₁ rfl)
 
 @[reducible] def Frontier.visit {g : Graph α}
     (visited : List (Visited g s)) (f : Frontier g visited skip s)
@@ -146,7 +149,8 @@ private def get_succ_frontier
     have := List.filter_preserve_in filter_func frontier_nodes v |>.mp
     exact this (And.intro h₁ (by
       apply decide_eq_true_iff (filter_func v) |>.mpr
-      simp at *
+      simp only [Visited.toList, List.mem_map, not_exists, not_and,
+        Bool.not_eq_true, filter_func] at h₂ ⊢
       exact h₂
     ))
 
@@ -160,14 +164,22 @@ private def get_succ_frontier
           apply Path.succ_merge f.path (frontier_nodes_filter_pres v h)
           intro h₄
           cases h₄
-          case head => simp at h₃
+          case head =>
+            simp only [Visited.toList, List.map_cons, List.mem_cons,
+              List.mem_map, true_or, not_true_eq_false, visited'] at h₃
           case tail _ h₅ =>
             exact h₃ (f.nodes_visited v h₅ |> List.Mem.tail f.cur)
       , nodes_visited := by
           intro n h₃
           have last := f.nodes_visited n
-          cases h₃ <;> simp [*] at *
-          case tail _ h₄ => apply Or.inr (last h₄)
+          simp only [visited', List.mem_cons, Visited.toList, List.mem_map]
+            at h₃ ⊢
+          cases h₃ with
+          | inl h₃ => simp only [h₃, exists_eq_or_imp, true_or]
+          | inr h₃ =>
+            have := last h₃
+            simp only [Visited.toList, List.mem_map, exists_eq_or_imp] at this ⊢
+            exact Or.inr this
       , cur_not_visit := by intro h₃; apply h₂.left h₃
       , nodes_not_skip := by
           intro n h₃
@@ -183,7 +195,10 @@ private def get_succ_frontier
       → u ∈ Frontier.toList frontier := by
     intro u h₁ h₂
     have := frontier_nodes_filter_pres' u h₁ h₂
-    simp at *
+    simp only [Frontier.toList, List.mapMember, Visited.toList, List.map_map,
+      List.mem_map, List.mem_attach, Function.comp_apply, true_and,
+      Subtype.exists, exists_prop, exists_eq_right, frontier_nodes_filtered,
+      frontier] at this ⊢
     exact this
 
   ⟨frontier, frontier_pres⟩
@@ -220,7 +235,8 @@ private def get_updated_fs
     have := List.filter_preserve_in filter_func fs f |>.mp
     exact this (And.intro h₁ (by
       apply decide_eq_true_iff (filter_func f) |>.mpr
-      simp at *
+      simp only [Visited.toList, List.mem_map, not_exists, not_and,
+        filter_func] at h₂ ⊢
       exact h₂
     ))
 
@@ -235,7 +251,8 @@ private def get_updated_fs
       , by
           intro n h₃
           have last := f.nodes_visited
-          simp [*] at *
+          simp only [Visited.toList, List.mem_map, List.map_cons, List.mem_cons,
+            visited'] at h₃ last ⊢
           exact Or.inr (last n h₃)
       , by intro h₃; exact h₂ h₃
       , f.nodes_not_skip
@@ -252,11 +269,10 @@ private def get_updated_fs
       rw [←h₃.right] at h₂
       rw [←h₃.right]
       have := fs_filter_pres f' h₃.left h₂
-      simp at *
-      apply Exists.intro f'
-      apply And.intro
-      exact this
-      rfl
+      simp only [Frontier.toList, List.mapMember, List.map_map, List.mem_map,
+        List.mem_attach, Function.comp_apply, true_and, Subtype.exists,
+        exists_prop, visited', new_fs] at this ⊢
+      exact ⟨f', this, by rfl⟩
     )
 
   ⟨new_fs, new_fs_pres⟩
@@ -311,7 +327,7 @@ inductive Result (g : Graph α) (s : α) (p : α → Bool) (skip : α → Bool) 
             → (∀ v ∈ Visited.toList visited, ¬p v)
             → Result g s p skip
 
-@[simp] def is_found {g : Graph α} (res : Result g s found skip) : Bool :=
+@[reducible] def is_found {g : Graph α} (res : Result g s found skip) : Bool :=
   match res with
   | .found _ _ _ _ _ => true
   | .not_found _ _ _ => false
@@ -333,15 +349,18 @@ def explore
     .not_found visited
       (by
         intro u h₁ v h₂ h₃
-        apply Or.elim (visited_succ u h₁ v h₂ h₃) <;> intro h₄ <;> simp at *
-        exact h₄
+        cases visited_succ u h₁ v h₂ h₃ with
+        | inl h₄ => contradiction
+        | inr h₄ => exact h₄
       ) visited_not_found
   | f :: fs =>
     if h₁ : found f.cur then
       .found f.cur h₁ (f.cur :: f.nodes) f.path_not_skip f.path
     else
       let visited' := f.visit visited
-      have cur_now_visited : f.cur ∈ Visited.toList visited' := by simp
+      have cur_now_visited : f.cur ∈ Visited.toList visited' := by
+        simp only [Visited.toList, List.map_cons, List.mem_cons, List.mem_map,
+          true_or, visited']
       let new_frontier := get_new_frontier g visited f fs
 
       -- for termination
@@ -356,7 +375,6 @@ def explore
           intro v h₂ u h₃ u_skip
           cases h₂
           case head =>
-            simp at h₃
             cases h : decide (u ∈ Visited.toList visited')
             case false =>
               have h := of_decide_eq_false h
@@ -377,13 +395,15 @@ def explore
             . apply Or.inr (.tail _ h₅)
         ) (by
           intro v h₂
-          simp at h₂
-          apply Or.elim h₂ <;> intro h₃
-          . rw [h₃]; exact h₁
-          . simp at visited_not_found
-            apply Exists.elim h₃
-            intro x h
-            simp [←h.right]; exact visited_not_found x h.left
+          simp only [Bool.not_eq_true] at h₁ ⊢
+          simp [visited'] at h₂
+          simp at visited_not_found
+          cases h₂ with
+          | inl h₂ => rw [h₂]; exact h₁
+          | inr h₂ =>
+            have ⟨x, h₂⟩ := h₂
+            rw [← h₂.right]
+            exact visited_not_found x h₂.left
         ) (by
             -- should hold since:
             -- all elements of visited are in the graph (is a subset)
@@ -412,27 +432,35 @@ def find_path
           |>.mpr h
           |>.left
           |> Path.succ
-      , nodes_visited := by simp
+      , nodes_visited := by
+          simp only [List.not_mem_nil, Visited.toList, List.map_nil,
+            IsEmpty.forall_iff, implies_true]
       , cur_not_visit := (by intro h₁; cases h₁)
-      , nodes_not_skip := by simp
+      , nodes_not_skip := by
+          simp only [List.not_mem_nil, Bool.not_eq_true, IsEmpty.forall_iff,
+            implies_true]
       , cur_not_skip := by
           have := List.filter_preserve_in (¬skip ·) succs v |>.mpr h |>.right
           rw [decide_eq_true_eq] at this
           exact this
       }
     ))
-    (by simp)
-    (by simp)
-    (by simp [List.length, ←Nat.succ_eq_add_one, Nat.zero_lt_succ])
+    (by simp only [Visited.toList, List.map_nil, List.not_mem_nil,
+      Bool.not_eq_true, Frontier.toList, List.mapMember, List.map_map,
+      List.mem_map, List.mem_attach, Function.comp_apply, true_and,
+      Subtype.exists, exists_prop, exists_eq_right, or_false,
+      IsEmpty.forall_iff, implies_true])
+    (by simp only [Visited.toList, List.map_nil, List.not_mem_nil,
+      Bool.not_eq_true, IsEmpty.forall_iff, implies_true])
+    (by simp only [List.length, ← Nat.succ_eq_add_one, Nat.zero_lt_succ])
 
 theorem find_path_for_false {g : Graph α} {s : α}
     (h₁ : ∀ v, has_vertex g v → ¬found v)
     : ¬is_found (find_path g s found skip) := by
   intro h₂
-  let res := find_path g s found skip
-  cases h₃ : res
+  cases h₃ : find_path g s found skip
   case found t h₄ _ _ path => exact h₁ t (finish_in_graph path) h₄
-  case not_found _ _ _ => simp [*] at h₂
+  case not_found _ _ _ => simp only [h₃] at h₂
 
 def find_path_to (g : Graph α) (s t : α)
     : Result g s (· = t) (fun _ => false) :=
@@ -445,7 +473,8 @@ def find_reachable_skipping (g : Graph α) (s : α) (skip : α → Bool)
   let found := (fun _ => false)
   match find_path g s found skip with
   | .found _ _ _ _ _ => by
-    have : ¬is_found (find_path g s found skip) := find_path_for_false (by simp)
+    have : ¬is_found (find_path g s found skip) :=
+      find_path_for_false (by simp only [not_false_eq_true, implies_true])
     contradiction
   | .not_found visited h _ => ⟨visited, h⟩
 
@@ -454,7 +483,8 @@ def find_reachable (g : Graph α) (s : α)
       ×' (∀ u ∈ Visited.toList visited, ∀ v ∈ Digraph.succ g u,
             v ∈ Visited.toList visited) :=
   let ⟨visited, hvisit⟩ := find_reachable_skipping g s (fun _ => false)
-  let hvisit' := fun u h₁ v h₂ => hvisit u h₁ v h₂ (by simp)
+  let hvisit' := fun u h₁ v h₂ =>
+    hvisit u h₁ v h₂ (by simp only [not_false_eq_true])
   ⟨visited, hvisit'⟩
 
 def reachable_list (g : Graph α) (u : Vertices g)
