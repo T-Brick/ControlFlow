@@ -18,24 +18,31 @@ instance : Membership α (Edge α) where mem v e := Edge.elem v e
 
 @[simp] theorem Edge.elem_iff [DecidableEq α] {v : α} {e : Edge α}
     : Edge.elem v e = true ↔ v ∈ e :=
-  ⟨by simp [Membership.mem], by simp [Membership.mem]⟩
+  ⟨ by simp only [Membership.mem, imp_self]
+  , by simp only [Membership.mem, imp_self]
+  ⟩
 
 @[reducible, simp] def Edge.flip (e : Edge α) : Edge α := ⟨e.finish, e.start⟩
 
-@[simp] theorem Edge.flip_flip (e : Edge α) : e.flip.flip = e := by simp
+@[simp] theorem Edge.flip_flip (e : Edge α) : e.flip.flip = e := by
+  simp only [flip]
 
 @[simp] theorem Edge.flip_symm {e₁ e₂ : Edge α}
     : e₁.flip = e₂ ↔ e₁ = e₂.flip := by
-  sorry
+  let ⟨start₁, finish₁⟩ := e₁
+  let ⟨start₂, finish₂⟩ := e₂
+  simp only [flip, mk.injEq]
+  exact ⟨fun ⟨h₁, h₂⟩ => ⟨h₂, h₁⟩, fun ⟨h₁, h₂⟩ => ⟨h₂, h₁⟩⟩
 
 @[simp] theorem Edge.flip_inj (e₁ e₂ : Edge α)
     : e₁.flip = e₂.flip → e₁ = e₂ := by
-  intro h
-  simp [flip] at h
-  sorry
+  let ⟨start₁, finish₁⟩ := e₁
+  let ⟨start₂, finish₂⟩ := e₂
+  simp only [flip, mk.injEq]
+  exact fun ⟨h₁, h₂⟩ => ⟨h₂, h₁⟩
 
 @[simp] theorem Edge.mem_flip {w : α} {e: Edge α} : w ∈ e.flip ↔ w ∈ e := by
-  simp [←Edge.elem_iff, elem]
+  simp only [flip, ← elem_iff, elem, Bool.or_eq_true, decide_eq_true_eq]
   apply Iff.intro <;> (intro h; apply Or.symm; exact h)
 
 instance [ToString α] : ToString (Edge α) where
@@ -383,11 +390,14 @@ theorem add_edges_adds (g : Graph α) (edges : List (Edge α))
 theorem add_edges_pres_edges (g : Graph α) (edges : List (Edge α))
     : ∀ e, e ∉ edges → (has_edge g e ↔ has_edge (add_edges g edges) e) := by
   intro e h₁
-  induction edges <;> simp [add_edges]
+  induction edges
+  case nil => simp only [add_edges]
   case cons x xs ih =>
-    if h₂ : e = x then simp [h₂] at h₁ else
-      rw [←add_edge_pres_edges (add_edges g xs) e x h₂]
-      exact ih (List.not_mem_of_not_mem_cons h₁)
+    if h₂ : e = x then
+      simp only [h₂, List.mem_cons, true_or, not_true_eq_false] at h₁
+    else
+      rw [ih (List.not_mem_of_not_mem_cons h₁)]
+      exact add_edge_pres_edges (add_edges g xs) e x h₂
 
 theorem add_edges_pres_existing_edge (g : Graph α) (edges : List (Edge α))
     : ∀ e ∈ g, e ∈ add_edges g edges := by
@@ -464,11 +474,14 @@ theorem rem_edges_removes (g : Graph α) (edges : List (Edge α))
 theorem rem_edges_pres_edges (g : Graph α) (edges : List (Edge α))
     : ∀ e, e ∉ edges → (has_edge g e ↔ has_edge (rem_edges g edges) e) := by
   intro e h₁
-  induction edges <;> simp [rem_edges]
+  induction edges
+  case nil => simp only [rem_edges]
   case cons x xs ih =>
-    if h₂ : e = x then simp [h₂] at h₁ else
-      rw [←rem_edge_pres_edges (rem_edges g xs) e x h₂]
-      exact ih (List.not_mem_of_not_mem_cons h₁)
+    if h₂ : e = x then
+      simp only [h₂, List.mem_cons, true_or, not_true_eq_false] at h₁
+    else
+      rw [ih (List.not_mem_of_not_mem_cons h₁)]
+      exact rem_edge_pres_edges (rem_edges g xs) e x h₂
 
 theorem rem_edges_pres_nonexisting_edge (g : Graph α) (edges : List (Edge α))
     : ∀ e, e ∉ g → e ∉ rem_edges g edges := by
@@ -491,9 +504,14 @@ theorem rem_edges_in_list_or_not_graph (g : Graph α) (edges : List (Edge α))
 theorem rem_edges_pres_vertex (g : Graph α) (edges : List (Edge α))
     : ∀ u, has_vertex g u ↔ has_vertex (rem_edges g edges) u := by
   intro u
-  induction edges <;> simp [rem_edges]
+  induction edges
+  case nil => simp only [rem_edges]
   case cons x xs ih =>
-    simp [ih, rem_edge_pres_vertex (rem_edges g xs) u x.start x.finish]
+    simp only [
+      ih,
+      rem_edge_pres_vertex (rem_edges g xs) u x.start x.finish,
+      rem_edges
+    ]
 
 
 /- Function and theorems for getting all edges from a list of vertices -/
@@ -603,11 +621,15 @@ theorem add_vertices_pres_vertex (g : Graph α) (vertices : List α)
     : ∀ v, v ∉ vertices
          → (has_vertex g v ↔ has_vertex (add_vertices g vertices) v) := by
   intro v h₁
-  induction vertices <;> simp [add_vertices]
+  induction vertices
+  case nil => simp only [add_vertices]
   case cons x xs ih =>
-    if eq : v = x then simp [eq] at h₁ else
+    if eq : v = x then
+      simp only [eq, List.mem_cons, true_or, not_true_eq_false] at h₁
+    else
       rw [ ih (List.not_mem_of_not_mem_cons h₁)
          , add_vertex_pres_vertex _ v x eq
+         , add_vertices
          ]
 
 theorem add_vertices_pres_existing_vertex (g : Graph α) (vertices : List α)
@@ -674,9 +696,12 @@ theorem rem_vertices_pres_vertex (g : Graph α) (vertices : List α)
     : ∀ v, v ∉ vertices
          → (has_vertex g v ↔ has_vertex (rem_vertices g vertices) v) := by
   intro v h₁
-  induction vertices <;> simp [rem_vertices]
+  induction vertices
+  case nil => simp only [rem_vertices]
   case cons x xs ih =>
-    if eq : v = x then simp [eq] at h₁ else
+    if eq : v = x then
+      simp only [eq, List.mem_cons, true_or, not_true_eq_false] at h₁
+    else
       rw [ih (List.not_mem_of_not_mem_cons h₁)]
       exact rem_vertex_pres_vertex _ _ _ eq
 

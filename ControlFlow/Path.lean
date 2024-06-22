@@ -407,9 +407,9 @@ theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
   else if uv_eq : u = v then simp [uv_eq] at *; exact ⟨ps₂, path₂⟩
   else if vw_eq : v = w then simp [vw_eq] at *; exact ⟨ps₁, path₁⟩
   else
-    have ⟨x, hsplit⟩ := List.first_common ps₁.reverse ps₂
-      (Iff.subst List.disjoint_reverse_left h₁)
-    simp at *
+    -- have ⟨x, hsplit⟩ := List.first_common ps₁.reverse ps₂
+      -- (Iff.subst List.disjoint_reverse_left h₁)
+    -- simp at *
     apply Exists.elim (remove_cycle path₁ uv_eq); intro ps₁' acyclic₁
     apply Exists.elim (remove_cycle path₂ vw_eq); intro ps₂' acyclic₂
     sorry
@@ -655,8 +655,8 @@ theorem add_undirected_edge_new_start_to_no_more {g : Graph α} {u v w : α}
       rw [←vw'_eq] at path'
       apply Exists.elim (finish_cons_rest path'); intro ps₂'' h
       simp only [List.cons.injEq, true_and] at h
-      simp [←h.left] at h
-      exact h (Or.inr v_in_ps'')
+      simp only [← h.left, List.mem_cons, not_or, true_and] at h
+      exact h.right v_in_ps''
 
 theorem add_undirected_edge_makes_cycle {g : Graph α} {u v : α}
     (neq : u ≠ v)

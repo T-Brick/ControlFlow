@@ -173,7 +173,7 @@ theorem add_edge_new_start_to_no_more {g : Graph α} {u v w : α}
       apply Exists.elim (finish_cons_rest path'); intro ps₂'' h
       simp only [List.cons.injEq, true_and] at h
       simp [←h.left] at h
-      exact h (Or.inr v_in_ps'')
+      exact h.right v_in_ps''
 
 theorem add_edge_new_start_no_cycle {g : Graph α} {u v : α}
     (u_not_in : ¬has_vertex g u)

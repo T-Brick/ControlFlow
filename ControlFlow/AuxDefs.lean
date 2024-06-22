@@ -1,4 +1,4 @@
-import Std
+import Batteries
 import Mathlib.Data.List.Basic
 
 theorem _root_.List.filter_remove [DecidableEq α]
@@ -130,18 +130,18 @@ theorem _root_.List.splitFirst_none [DecidableEq α]
         . intro h₃; apply neq (Eq.symm h₃)
         . exact ih heq
 
-def List.first_common [DecidableEq α]
-    (l₁ l₂ : List α)
-    (h : ¬List.Disjoint l₁ l₂)
-    : (x : α) ×' x ∈ l₁ ∧ x ∈ l₂ := by
-  induction l₁
-  case nil => have := List.disjoint_nil_left l₂; contradiction
-  case cons n ns ih =>
-    if is_in : n ∈ l₂ then exact ⟨n, And.intro (by simp) is_in⟩ else
-      have := Iff.subst List.disjoint_cons_left h
-      simp at this
-      let ⟨x, hres⟩ := ih (this is_in)
-      exact ⟨x, And.intro (List.mem_cons_of_mem n hres.left) hres.right⟩
+-- def List.first_common [DecidableEq α]
+    -- (l₁ l₂ : List α)
+    -- (h : ¬List.Disjoint l₁ l₂)
+    -- : (x : α) ×' x ∈ l₁ ∧ x ∈ l₂ := by
+  -- induction l₁
+  -- case nil => have := List.disjoint_nil_left l₂; contradiction
+  -- case cons n ns ih =>
+    -- if is_in : n ∈ l₂ then exact ⟨n, And.intro (by simp) is_in⟩ else
+      -- have := Iff.subst List.disjoint_cons_left h
+      -- simp at this
+      -- let ⟨x, hres⟩ := ih (this is_in)
+      -- exact ⟨x, And.intro (List.mem_cons_of_mem n hres.left) hres.right⟩
 
 -- probs a better way to write this
 theorem List.disjoint_reverse_left {l₁ l₂ : List α}

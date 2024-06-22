@@ -280,8 +280,7 @@ def undirect (g : Graph α)
 theorem undirect_pres_vertex (g : Graph α)
     : ∀ v, has_vertex g v ↔ has_vertex (undirect g).fst v := by
   intro v
-  simp [undirect]
-  apply Iff.intro <;> intro h₁
+  apply Iff.intro <;> (simp [undirect]; intro h₁)
   . exact add_edges_pres_existing_vertex _ _ v h₁
   . have := add_edges_adds g (reverse_edges (toEdges g))
     if v_in : (reverse_edges (toEdges g)) |>.any (v ∈ ·) then
@@ -291,10 +290,10 @@ theorem undirect_pres_vertex (g : Graph α)
         e.start e.finish h₂.left v h₂.right
     else
       simp [←Edge.elem_iff, Edge.elem] at v_in
-      have : ∀ (e : Edge α), e ∈ _ → v ≠ e.start ∧ v ≠ e.finish :=
+      have : ∀ (e : Edge α), e ∈ reverse_edges (toEdges g) → v ≠ e.start ∧ v ≠ e.finish :=
         (fun e in_e => by
-          apply And.intro <;> (intro h; apply (v_in e in_e))
-          exact Or.inl h; exact Or.inr h
+          rw [ne_eq]
+          exact v_in e in_e
         )
       exact add_edges_pres_vertex g _ v (fun e h => Or.inl (this e h)) |>.mpr h₁
 
@@ -348,16 +347,12 @@ def add_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
   ⟨by intro u v
       if eq_uv : e = ⟨u, v⟩ then
         have := Digraph.add_undirected_edge_adds g ⟨u, v⟩
-        simp [eq_uv] at *
-        apply Iff.intro <;> intro _h
-        . exact this.right
-        . exact this.left
+        simp only [Edge.flip, eq_uv, Bool.coe_iff_coe] at this ⊢
+        rw [this.left, this.right]
       else if eq_vu : e = ⟨v, u⟩ then
         have := Digraph.add_undirected_edge_adds g ⟨v, u⟩
-        simp [eq_vu] at *
-        apply Iff.intro <;> intro _h
-        . exact this.left
-        . exact this.right
+        simp only [Edge.flip, eq_vu, Bool.coe_iff_coe] at this ⊢
+        rw [this.left, this.right]
       else
         have pres := Digraph.add_undirected_edge_pres_edges g
         have h₁ := pres ⟨u, v⟩ e (neq_symm eq_uv) (fun h => by
