@@ -3,7 +3,7 @@ import ControlFlow.Reachable
 namespace ControlFlow
 
 variable {Graph : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 @[reducible, simp] def Digraph.Cyclic [Digraph α Graph] (g : Graph α) : Prop :=
   ∃ v, ∃ ps, Path g v v ps
@@ -11,7 +11,7 @@ variable [Digraph α Graph] [DecidableEq α]
 @[reducible, simp] def Digraph.Acyclic [Digraph α Graph] (g : Graph α) : Prop :=
   ∀ v, ¬∃ ps, Path g v v ps
 
-@[reducible, simp] abbrev DAG : (g : Graph α) → Prop := Digraph.Acyclic
+@[simp] abbrev DAG : (g : Graph α) → Prop := Digraph.Acyclic
 
 @[simp] theorem Digraph.Acyclic.iff_not_cyclic {g : Graph α}
     : Acyclic g ↔ ¬Cyclic g := by simp
@@ -21,7 +21,7 @@ variable [Digraph α Graph] [DecidableEq α]
 
 namespace Path
 
-theorem Reachable.antisymm
+theorem Reachable.antisymm [DecidableEq α]
     {g : Graph α} (dag : DAG g) {u v : Digraph.Vertices g}
     (r₁ : Path.Reachable g u v) (r₂ : Path.Reachable g v u) : u = v := by
   have u_in := u.property
@@ -36,7 +36,8 @@ theorem Reachable.antisymm
       have := dag u ps h₁
       contradiction
 
-instance {g : Graph α} (dag : DAG g) : PartialOrder (Reachable.Vertices g) where
+instance [DecidableEq α] {g : Graph α} (dag : DAG g)
+    : PartialOrder (Reachable.Vertices g) where
   le_antisymm u v := Reachable.antisymm dag (u := u) (v := v)
 
 end Path

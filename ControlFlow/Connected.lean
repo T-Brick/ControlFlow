@@ -6,7 +6,7 @@ open Path
 open Digraph
 
 variable {Graph  : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 -- todo: maybe use the `Vertices g` subtype
 @[reducible, simp] def Connected (g : Graph α) : Prop :=
@@ -44,7 +44,10 @@ theorem add_edge_flip_iff {g : Graph α} {e : Edge α}
   . exact Path.Reachable.add_undirected_edge_flip_iff u v e h₁ h₁ h₂ h₂
       |>.mpr (h u v h₁ h₂)
 
-def add_vertex_start {g : Graph α} (connected : Connected g) (e : Edge α)
+def add_vertex_start [DecidableEq α]
+    {g : Graph α}
+    (connected : Connected g)
+    (e : Edge α)
     (start_in : has_vertex g e.start)
     : Connected (Digraph.add_undirected_edge g e) := by
   if h₁ : has_vertex g e.finish then exact add_edge connected e start_in h₁ else
@@ -76,12 +79,14 @@ def add_vertex_start {g : Graph α} (connected : Connected g) (e : Edge α)
     exact connected u v (is_in' u eq_uf u_in) (is_in' v eq_vf v_in)
        |> Path.Reachable.add_undirected_edge_pres e
 
-def add_vertex_finish {g : Graph α} (connected : Connected g) (e : Edge α)
+def add_vertex_finish [DecidableEq α] {g : Graph α}
+    (connected : Connected g)
+    (e : Edge α)
     (h₁ : has_vertex g e.finish)
     : Connected (Digraph.add_undirected_edge g e) :=
   add_vertex_start connected e.flip h₁ |> add_edge_flip_iff.mp
 
-def merge {g₁ g₂ : Graph α} {w : α}
+def merge [DecidableEq α] {g₁ g₂ : Graph α} {w : α}
     (connected₁ : Connected g₁)
     (connected₂ : Connected g₂)
     (shared : has_vertex g₁ w ∧ has_vertex g₂ w)
@@ -106,7 +111,7 @@ def merge {g₁ g₂ : Graph α} {w : α}
       |> Reachable.graph_merge_left g₂ _ _
     exact Reachable.trans uw_reach wv_reach
 
-def merge_disjoint {g₁ g₂ : Graph α} {u v : α}
+def merge_disjoint [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
     (u_in_g₁ : has_vertex g₁ u)
     (v_in_g₂ : has_vertex g₂ v)
     (disjoint_left : ∀ w, has_vertex g₁ w → ¬has_vertex g₂ w)
@@ -119,7 +124,7 @@ def merge_disjoint {g₁ g₂ : Graph α} {u v : α}
   exact Reachable.graph_merge_disjoint u_in_g₁ v_in_g₂
     disjoint_left disjoint_right this
 
-def merge_add_edge {g₁ g₂ : Graph α} {u v : α}
+def merge_add_edge [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
     (connected₁ : Connected g₁)
     (connected₂ : Connected g₂)
     (u_in_g₁ : has_vertex g₁ u)

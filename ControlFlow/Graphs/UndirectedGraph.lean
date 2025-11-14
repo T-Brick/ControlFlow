@@ -3,7 +3,7 @@ import ControlFlow.Graphs.Digraph
 namespace ControlFlow
 
 variable {Graph : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 -- todo make not a structure
 structure UndirectedGraph [Digraph α Graph] (g : Graph α) : Prop where
@@ -100,10 +100,10 @@ theorem add_undirected_edge_new_start_antisymm (g : Graph α) (u : α)
     apply Or.elim (add_undirected_edge_eq_or_in g _ _ e_in) <;> intro h₁ )
   . apply Or.elim h₁ <;> intro h₁
     . simp at h₁; simp [←h₁.left] at h₁; exact Eq.symm h₁
-    . have := Edge.mk.inj h₁; simp [←this.right] at this; exact Eq.symm this
+    . have := Edge.mk.inj h₁; simp only [and_true] at this; exact Eq.symm this
   . have := edge_vertices g _ _ h₁ |>.right |> u_not_in; contradiction
   . apply Or.elim h₁ <;> intro h₁
-    . have := Edge.mk.inj h₁; simp [this.left] at this; exact Eq.symm this
+    . have := Edge.mk.inj h₁; simp only [true_and] at this; exact Eq.symm this
     . simp at h₁; simp [h₁.left] at h₁; exact Eq.symm h₁
   . have := edge_vertices g _ _ h₁ |>.left |> u_not_in; contradiction
 
@@ -243,7 +243,7 @@ theorem rem_undirected_edge_pres_vertex (g : Graph α) (u v w : α)
 
 /- Converting a digraph into an undirected graph -/
 
-def undirect (g : Graph α)
+def undirect [DecidableEq α] (g : Graph α)
     : (undirected_g : Graph α) ×' UndirectedGraph undirected_g :=
   let edges := toEdges g
   let rev_edges : List (Edge α) := reverse_edges edges
@@ -277,7 +277,7 @@ def undirect (g : Graph α)
 
   ⟨undirected_g, UndirectedGraph.mk undirected_edges⟩
 
-theorem undirect_pres_vertex (g : Graph α)
+theorem undirect_pres_vertex  [DecidableEq α] (g : Graph α)
     : ∀ v, has_vertex g v ↔ has_vertex (undirect g).fst v := by
   intro v
   apply Iff.intro <;> (simp [undirect]; intro h₁)
@@ -297,8 +297,11 @@ theorem undirect_pres_vertex (g : Graph α)
         )
       exact add_edges_pres_vertex g _ v (fun e h => Or.inl (this e h)) |>.mpr h₁
 
-theorem undirect_pres_edge (g : Graph α) : ∀ e ∈ g, e ∈ (undirect g).fst := by
-  intro e h₁; simp [undirect]; exact add_edges_pres_existing_edge g _ e h₁
+theorem undirect_pres_edge  [DecidableEq α] (g : Graph α)
+    : ∀ e ∈ g, e ∈ (undirect g).fst := by
+  intro e h₁
+  simp [undirect]
+  exact add_edges_pres_existing_edge g _ e h₁
 
 
 /- Coercions for various graph operations -/
@@ -342,7 +345,9 @@ namespace UndirectedGraph
 
 open Digraph
 
-def add_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
+def add_edge  [DecidableEq α] {g : Graph α}
+    (ug : UndirectedGraph g)
+    (e : Edge α)
     : UndirectedGraph (Digraph.add_undirected_edge g e) :=
   ⟨by intro u v
       if eq_uv : e = ⟨u, v⟩ then
@@ -375,7 +380,7 @@ def add_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
       )
     )
 
-def rem_edge {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
+def rem_edge [DecidableEq α] {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
     : UndirectedGraph (Digraph.rem_undirected_edge g e) :=
   ⟨by intro u v
       if eq_uv : e = ⟨u, v⟩ then
@@ -412,12 +417,12 @@ def rem_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
   ⟨by intro u v
       have := Digraph.rem_vertex_removes_edge g
       if eq_u : w = u then
-        simp only [Edge.flip, eq_u] at *
+        simp only [eq_u] at *
         apply Iff.intro <;> intro h
         . have := (this v u).right h; contradiction
         . have := (this v u).left h; contradiction
       else if eq_v : w = v then
-        simp only [Edge.flip, eq_v] at *
+        simp only [eq_v] at *
         apply Iff.intro <;> intro h
         . have := (this u v).left h; contradiction
         . have := (this u v).right h; contradiction
@@ -440,7 +445,7 @@ def trivial (w : α) : UndirectedGraph (Digraph.trivial w : Graph α) :=
       )
   ⟩
 
-theorem merge {g₁ g₂ : Graph α}
+theorem merge [DecidableEq α] {g₁ g₂ : Graph α}
     (ug₁ : UndirectedGraph g₁)
     (ug₂ : UndirectedGraph g₂)
     : UndirectedGraph (Digraph.merge g₁ g₂) :=

@@ -5,7 +5,7 @@ import ControlFlow.Graphs.DAG
 namespace ControlFlow.UndirectedGraph
 
 variable {Graph : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 @[reducible, simp] def Cyclic {g : Graph α} (_ug : UndirectedGraph g) : Prop :=
   ∃ v, ∃ ps, Path.Undirected g v v ps
@@ -23,21 +23,25 @@ open Digraph
 
 namespace Cyclic
 
-@[simp] theorem add_edge_flip_iff {g : Graph α} (ug : UndirectedGraph g)
-    {e : Edge α} : Cyclic (add_edge ug e.flip) ↔ Cyclic (add_edge ug e) := by
+@[simp] theorem add_edge_flip_iff [DecidableEq α] {g : Graph α}
+    (ug : UndirectedGraph g)
+    {e : Edge α}
+    : Cyclic (add_edge ug e.flip) ↔ Cyclic (add_edge ug e) := by
   apply Iff.intro <;> (
     intro cyclic; exact cyclic.imp (fun _ =>
       Exists.imp (fun _ => Path.Undirected.add_edge_flip_iff.mp)
     )
   )
 
-theorem add_edge {g : Graph α} {ug : UndirectedGraph g} (cyclic : Cyclic ug)
-    (e : Edge α) : Cyclic (add_edge ug e) :=
+theorem add_edge [DecidableEq α] {g : Graph α} {ug : UndirectedGraph g}
+    (cyclic : Cyclic ug)
+    (e : Edge α)
+    : Cyclic (add_edge ug e) :=
   cyclic.imp (fun _ =>
     Exists.imp (fun _ => Path.Undirected.add_edge_pres e)
   )
 
-theorem merge {g₁ g₂ : Graph α}
+theorem merge [DecidableEq α] {g₁ g₂ : Graph α}
     (ug₁ : UndirectedGraph g₁)
     (ug₂ : UndirectedGraph g₂)
     (either_cyclic : Cyclic ug₁ ∨ Cyclic ug₂)
@@ -53,7 +57,7 @@ theorem merge {g₁ g₂ : Graph α}
   )
 
 
-instance {g : Graph α} {e : Edge α} {ug : UndirectedGraph g}
+instance [DecidableEq α] {g : Graph α} {e : Edge α} {ug : UndirectedGraph g}
     : Coe (Cyclic (UndirectedGraph.add_edge ug e.flip))
           (Cyclic (UndirectedGraph.add_edge ug e)) :=
   ⟨(add_edge_flip_iff ug).mp⟩
@@ -69,14 +73,16 @@ theorem trivial (w : α)
     : Acyclic (UndirectedGraph.trivial w : UndirectedGraph (_ : Graph α)) := by
   simp; intro _ _ upath; exact Path.Undirected.trivial w upath
 
-@[simp] theorem add_edge_flip_iff {g : Graph α} (ug : UndirectedGraph g)
-    {e : Edge α} : Acyclic (add_edge ug e.flip) ↔ Acyclic (add_edge ug e) := by
+@[simp] theorem add_edge_flip_iff [DecidableEq α] {g : Graph α}
+    (ug : UndirectedGraph g)
+    {e : Edge α}
+    : Acyclic (add_edge ug e.flip) ↔ Acyclic (add_edge ug e) := by
   apply Iff.intro <;> (
     intro acyclic v eps; apply acyclic v
     exact Exists.imp (fun _ => Path.Undirected.add_edge_flip_iff.mp) eps
   )
 
-theorem add_edge_finish {g : Graph α}
+theorem add_edge_finish [DecidableEq α] {g : Graph α}
     {ug : UndirectedGraph g}
     (acyclic : Acyclic ug)
     (e : Edge α)
@@ -93,7 +99,7 @@ theorem add_edge_finish {g : Graph α}
     exact Path.Undirected.add_edge_new_start_pres ug u_not_in upath
       (neq_symm eq) (neq_symm eq) |> h a
 
-theorem add_edge_start {g : Graph α}
+theorem add_edge_start [DecidableEq α] {g : Graph α}
     {ug : UndirectedGraph g}
     (acyclic : Acyclic ug)
     (e : Edge α)
@@ -103,7 +109,7 @@ theorem add_edge_start {g : Graph α}
   add_edge_finish acyclic e.flip u_not_in (neq_symm neq)
     |> (add_edge_flip_iff ug).mp
 
-theorem merge_disjoint {g₁ g₂ : Graph α}
+theorem merge_disjoint [DecidableEq α] {g₁ g₂ : Graph α}
     {ug₁ : UndirectedGraph g₁} {ug₂ : UndirectedGraph g₂}
     (acyclic₁ : Acyclic ug₁)
     (acyclic₂ : Acyclic ug₂)
@@ -150,7 +156,7 @@ theorem merge_disjoint {g₁ g₂ : Graph α}
       )
     exact acyclic₂ v (Exists.intro ps this)
 
-theorem merge_disjoint_add_edge {g₁ g₂ : Graph α} {u v : α}
+theorem merge_disjoint_add_edge [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
     {ug₁ : UndirectedGraph g₁} {ug₂ : UndirectedGraph g₂}
     (acyclic₁ : Acyclic ug₁)
     (acyclic₂ : Acyclic ug₂)
@@ -168,7 +174,7 @@ theorem merge_disjoint_add_edge {g₁ g₂ : Graph α} {u v : α}
   simp at this
   sorry
 
-instance {g : Graph α} {e : Edge α} {ug : UndirectedGraph g}
+instance [DecidableEq α] {g : Graph α} {e : Edge α} {ug : UndirectedGraph g}
     : Coe (Acyclic (add_edge ug e.flip))
           (Acyclic (add_edge ug e)) :=
   ⟨(add_edge_flip_iff ug).mp⟩

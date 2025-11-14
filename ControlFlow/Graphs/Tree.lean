@@ -3,7 +3,7 @@ import ControlFlow.Connected
 import ControlFlow.Graphs.DAG
 import ControlFlow.UndirectedCycle
 
-import Mathlib.Data.Tree
+import Mathlib.Data.Tree.Basic
 
 namespace ControlFlow
 

@@ -182,3 +182,137 @@ class Algorithm [Digraph α Graph] where
   complete : ∀ cfg : CFG α Graph, ∀ res v,
               cfg.digraph(cfg.start) |= res ≫ v → res ∈ sdom cfg v
 
+namespace Algorithm
+
+def Dom (α : Type) := Option (Set α)
+
+instance [DecidableEq (Set α)] : DecidableEq (Dom α) :=
+  fun a b => by
+    cases a <;> cases b
+    case none.none => exact .isTrue rfl
+    case none.some bv => exact .isFalse (by simp only [not_false_eq_true])
+    case some.none av => exact .isFalse (by simp only [not_false_eq_true])
+    case some.some av bv =>
+      simp only [Option.some_inj (a := av)]
+      exact decEq av bv
+
+
+inductive Dom.LE : Dom α → Dom α → Prop where
+| refl : Dom.LE x x
+| bot : Dom.LE .none x
+| subset : y ⊆ x → Dom.LE (.some x) (.some y)
+
+instance : Top (Dom α) where
+  top := .some ∅
+instance : Bot (Dom α) where
+  bot := .none
+
+@[refl]
+theorem Dom.LE.reflexive (a : Dom α) : Dom.LE a a := .refl
+
+@[trans]
+theorem Dom.LE.trans (h₁ : Dom.LE a b) (h₂ : Dom.LE b c) : Dom.LE a c := by
+  cases h₁
+  case refl => exact h₂
+  case bot => exact .bot
+  case subset x y h₃ =>
+    cases h₂
+    case refl => exact .subset h₃
+    case subset z h₄ => exact Dom.LE.subset (Set.Subset.trans h₄ h₃)
+
+theorem Dom.LE.antisymm (h₁ : Dom.LE a b) (h₂ : Dom.LE b a) : a = b := by
+  cases h₁
+  case refl => rfl
+  case bot => cases h₂ <;> rfl
+  case subset x y h₁ =>
+    cases h₂
+    case refl => rfl
+    case subset h₂ => exact Option.some_inj.mpr (Set.Subset.antisymm h₂ h₁)
+
+/-
+ - Defined as set intersection lifted into an option, where `none` is the
+ - bottom, i.e. an identity for `join`
+ -/
+def Dom.join (l r : Dom α) : Dom α :=
+  match l with
+  | .none => r
+  | .some lv =>
+    match r with
+    | .none => l
+    | .some rv => .some (lv ∩ rv)
+
+theorem Dom.LE.join_left (x y : Dom α) : Dom.LE x (x.join y) := by
+  cases x
+  case none => exact .bot
+  case some xv =>
+    cases y
+    case none => exact .refl
+    case some yv => exact Dom.LE.subset (Set.inter_subset_left xv yv)
+
+theorem Dom.LE.join_right (x y : Dom α) : Dom.LE y (x.join y) := by
+  cases x
+  case none => exact .refl
+  case some xv =>
+    cases y
+    case none => exact .bot
+    case some yv => exact Dom.LE.subset (Set.inter_subset_right xv yv)
+
+theorem Dom.LE.join_lub
+    (h₁ : Dom.LE x z)
+    (h₂ : Dom.LE y z)
+    : Dom.LE (x.join y) z := by
+  cases x
+  case none => exact h₂
+  case some xv =>
+    cases y
+    case none => exact h₁
+    case some yv =>
+      cases z
+      case none => cases h₁
+      case some zv =>
+        apply Dom.LE.subset
+        apply Set.subset_inter_iff.mpr
+        apply And.intro
+        . cases h₁
+          . rfl
+          . assumption
+        . cases h₂
+          . rfl
+          . assumption
+
+instance : Lattice (Dom α) where
+  sup := Dom.join
+  le := Dom.LE
+  le_refl := Dom.LE.reflexive
+  le_trans := fun a b c => Dom.LE.trans
+  le_antisymm := fun a b => Dom.LE.antisymm
+  le_sup_left := Dom.LE.join_left
+  le_sup_right := Dom.LE.join_right
+  sup_le := fun a b c => Dom.LE.join_lub
+  inf := sorry
+  inf_le_left := sorry
+  inf_le_right := sorry
+  le_inf := sorry
+
+def Dom.flow (v : α) (input : Dom α) : Dom α :=
+  match input with
+  | .none => .none
+  | .some input => .some (input.insert v)
+
+theorem Dom.flow_monotonic (v : α) : Monotone (Dom.flow v) := by
+  intro a b h₁
+  rw [flow, flow]
+  cases a <;> cases b <;> simp
+  case none.some bv => exact .bot
+  case some.none av => contradiction
+  case some.some av bv =>
+    apply Dom.LE.subset
+    cases h₁
+    case a.refl => rfl
+    case a.subset h₁ => exact Set.insert_subset_insert h₁
+
+def compute [DecidableEq (Set α)] (cfg : CFG α Graph) : Unit :=
+  let res := Dataflow.kildall cfg Dom.flow ⊤ .forward .may Dom.flow_monotonic
+  sorry
+
+end Algorithm

@@ -11,7 +11,7 @@ open Digraph
 open Path
 
 variable {Graph : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 structure Visited (g : Graph α) (s : α) where
   node    : α
@@ -29,7 +29,7 @@ deriving DecidableEq
   exact h
 
 instance : Membership α (List (Visited (g : Graph α) s)) where
-  mem v visits := v ∈ Visited.toList visits
+  mem visits v := v ∈ Visited.toList visits
 
 structure Frontier (g : Graph α) (visited : List (Visited g s)) (skip : α → Bool) (s : α) where
   cur : α
@@ -112,7 +112,7 @@ structure NewFrontier
                 → u ∉ Visited.toList (f.visit visited) ∧ ¬skip u
                 → u ∈ Frontier.toList frontier
 
-private def get_succ_frontier
+private def get_succ_frontier [DecidableEq α]
     (g : Graph α)
     (visited : List (Visited g s))
     (f : Frontier g visited skip s)
@@ -148,7 +148,7 @@ private def get_succ_frontier
     intro v h₁ h₂
     have := List.filter_preserve_in filter_func frontier_nodes v |>.mp
     exact this (And.intro h₁ (by
-      apply decide_eq_true_iff (filter_func v) |>.mpr
+      apply decide_eq_true_iff.mpr
       simp only [Visited.toList, List.mem_map, not_exists, not_and,
         Bool.not_eq_true, filter_func] at h₂ ⊢
       exact h₂
@@ -204,7 +204,7 @@ private def get_succ_frontier
   ⟨frontier, frontier_pres⟩
 
 
-private def get_updated_fs
+private def get_updated_fs [DecidableEq α]
     (g : Graph α)
     (visited : List (Visited g s))
     (f : Frontier g visited skip s)
@@ -234,7 +234,7 @@ private def get_updated_fs
     intro f h₁ h₂
     have := List.filter_preserve_in filter_func fs f |>.mp
     exact this (And.intro h₁ (by
-      apply decide_eq_true_iff (filter_func f) |>.mpr
+      apply decide_eq_true_iff.mpr
       simp only [Visited.toList, List.mem_map, not_exists, not_and,
         filter_func] at h₂ ⊢
       exact h₂
@@ -271,14 +271,14 @@ private def get_updated_fs
       have := fs_filter_pres f' h₃.left h₂
       simp only [Frontier.toList, List.mapMember, List.map_map, List.mem_map,
         List.mem_attach, Function.comp_apply, true_and, Subtype.exists,
-        exists_prop, visited', new_fs] at this ⊢
+        visited', new_fs] at this ⊢
       exact ⟨f', this, by rfl⟩
     )
 
   ⟨new_fs, new_fs_pres⟩
 
 
-private def get_new_frontier
+private def get_new_frontier [DecidableEq α]
     (g : Graph α)
     (visited : List (Visited g s))
     (f : Frontier g visited skip s)
@@ -332,7 +332,7 @@ inductive Result (g : Graph α) (s : α) (p : α → Bool) (skip : α → Bool) 
   | .found _ _ _ _ _ => true
   | .not_found _ _ _ => false
 
-def explore
+def explore [DecidableEq α]
     (g : Graph α) (s : α)
     (found : α → Bool)
     (skip : α → Bool)
@@ -414,7 +414,7 @@ def explore
 
 termination_by (Digraph.toVertices g).length + 1 - visited.length
 
-def find_path
+def find_path [DecidableEq α]
     (g : Graph α)
     (s : α)
     (found : α → Bool)
@@ -454,19 +454,22 @@ def find_path
       Bool.not_eq_true, IsEmpty.forall_iff, implies_true])
     (by simp only [List.length, ← Nat.succ_eq_add_one, Nat.zero_lt_succ])
 
-theorem find_path_for_false {g : Graph α} {s : α}
+theorem find_path_for_false [DecidableEq α] {g : Graph α} {s : α}
     (h₁ : ∀ v, has_vertex g v → ¬found v)
     : ¬is_found (find_path g s found skip) := by
   intro h₂
   cases h₃ : find_path g s found skip
   case found t h₄ _ _ path => exact h₁ t (finish_in_graph path) h₄
-  case not_found _ _ _ => simp only [h₃] at h₂
+  case not_found _ _ _ => simp only [h₃, Bool.false_eq_true] at h₂
 
-def find_path_to (g : Graph α) (s t : α)
+def find_path_to  [DecidableEq α](g : Graph α) (s t : α)
     : Result g s (· = t) (fun _ => false) :=
   find_path g s (· = t) (fun _ => false)
 
-def find_reachable_skipping (g : Graph α) (s : α) (skip : α → Bool)
+def find_reachable_skipping [DecidableEq α]
+    (g : Graph α)
+    (s : α)
+    (skip : α → Bool)
     : (visited : List (Visited g s))
       ×' (∀ u ∈ Visited.toList visited, ∀ v ∈ Digraph.succ g u,
             ¬skip v → v ∈ Visited.toList visited) :=
@@ -474,20 +477,20 @@ def find_reachable_skipping (g : Graph α) (s : α) (skip : α → Bool)
   match find_path g s found skip with
   | .found _ _ _ _ _ => by
     have : ¬is_found (find_path g s found skip) :=
-      find_path_for_false (by simp only [not_false_eq_true, implies_true])
+      find_path_for_false (by simp only [reduceCtorEq, not_false_eq_true, implies_true])
     contradiction
   | .not_found visited h _ => ⟨visited, h⟩
 
-def find_reachable (g : Graph α) (s : α)
+def find_reachable [DecidableEq α] (g : Graph α) (s : α)
     : (visited : List (Visited g s))
       ×' (∀ u ∈ Visited.toList visited, ∀ v ∈ Digraph.succ g u,
             v ∈ Visited.toList visited) :=
   let ⟨visited, hvisit⟩ := find_reachable_skipping g s (fun _ => false)
   let hvisit' := fun u h₁ v h₂ =>
-    hvisit u h₁ v h₂ (by simp only [not_false_eq_true])
+    hvisit u h₁ v h₂ (by simp only [Bool.false_eq_true, not_false_eq_true])
   ⟨visited, hvisit'⟩
 
-def reachable_list (g : Graph α) (u : Vertices g)
+def reachable_list [DecidableEq α] (g : Graph α) (u : Vertices g)
     : (nodes : List α) ×' ∀ v, (v = u) ∨ (v.val ∈ nodes) → Reachable g u v :=
   let ⟨visited, _⟩ := find_reachable g u.val
   let nodes := Visited.toList visited

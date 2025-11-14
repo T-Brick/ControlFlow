@@ -1,4 +1,3 @@
-
 import ControlFlow.Graphs.Digraph
 import ControlFlow.Graphs.UndirectedGraph
 
@@ -6,7 +5,7 @@ import ControlFlow.Graphs.UndirectedGraph
 namespace ControlFlow
 
 variable {Graph : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 -- we exclude u from the list so a path can be cyclical
 inductive Path (g : Graph α) : α → α → List α → Prop where
@@ -178,7 +177,7 @@ theorem last_pathlist_imp_edge {g : Graph α} {u v w : α} {ps : List α}
     rw [List.getLast_cons (pathlist_nonempty path')] at w_last
     exact ih w_last
 
-def split {g : Graph α} {u v w : α} {ps : List α}
+def split [DecidableEq α] {g : Graph α} {u v w : α} {ps : List α}
     (h₁ : v ∈ ps)
     (h₂ : v ≠ w)
     (path : g |= ps : u -> w)
@@ -204,7 +203,7 @@ def split {g : Graph α} {u v w : α} {ps : List α}
       . apply And.intro
         . intro h₅
           rw [h'.right.left] at h₄
-          exact h₄ (List.mem_append_of_mem_right ps₂ h₅)
+          exact h₄ (List.mem_append_right ps₂ h₅)
         . exact h'.left
       . apply And.intro
         . exact h'.right.left
@@ -213,7 +212,7 @@ def split {g : Graph α} {u v w : α} {ps : List α}
           . exact Path.cons h₃ h'.right.right.right (by
               intro h₅
               rw [h'.right.left] at h₄
-              exact h₄ (List.mem_append_of_mem_left ps₁ h₅)
+              exact h₄ (List.mem_append_left ps₁ h₅)
             )
     case isTrue eq =>
       simp [eq]
@@ -224,7 +223,7 @@ def split {g : Graph α} {u v w : α} {ps : List α}
       . apply And.intro (by simp)
         exact And.intro path' (.edge h₃)
 
-theorem in_pathlist_has_path {g : Graph α} {u v w₁ w₂ : α} {ps : List α}
+theorem in_pathlist_has_path [DecidableEq α] {g : Graph α} {u v w₁ w₂ : α} {ps : List α}
     (path : g |= ps : w₁ -> w₂)
     (u_in_ps : u ∈ ps)
     (v_in_ps : v ∈ ps)
@@ -287,7 +286,7 @@ theorem edgelist_nonempty {g : Graph α} (path : g |= ps : u -> v)
     | nil => simp [pathlist_to_edgelist] at eq
     | cons y ys => simp [pathlist_to_edgelist] at eq
 
-theorem graph_merge_comm {g₁ g₂ : Graph α}
+theorem graph_merge_comm [DecidableEq α] {g₁ g₂ : Graph α}
     (path : Digraph.merge g₁ g₂ |= ps : u -> v)
     : Digraph.merge g₂ g₁ |= ps : u -> v :=
   match path with
@@ -295,7 +294,7 @@ theorem graph_merge_comm {g₁ g₂ : Graph α}
   | .cons h₁ path' h₂ =>
     .cons (Digraph.merge_has_edge_comm.mp h₁) (graph_merge_comm path') h₂
 
-theorem graph_merge_cross {g₁ g₂ : Graph α}
+theorem graph_merge_cross [DecidableEq α] {g₁ g₂ : Graph α}
     (path : Digraph.merge g₁ g₂ |= ps : u -> v)
     (u_in_g₁ : has_vertex g₁ u)
     (x_in_g₂ : ∃ x ∈ ps, has_vertex g₂ x)
@@ -324,7 +323,7 @@ theorem graph_merge_cross {g₁ g₂ : Graph α}
       simp [w'_in_g₂] at x_in_g₂
       exact ih x_in_g₂
 
-theorem graph_merge_cross' {g₁ g₂ : Graph α}
+theorem graph_merge_cross' [DecidableEq α] {g₁ g₂ : Graph α}
     (path : Digraph.merge g₁ g₂ |= ps : u -> v)
     (u_in_g₂ : has_vertex g₂ u)
     (x_in_g₁ : ∃ x ∈ ps, has_vertex g₁ x)
@@ -353,7 +352,7 @@ structure Acyclic (g : Graph α) (u v : α) (ps : List α) : Prop where
 instance {g : Graph α} : Coe (Acyclic g u v ps) (Path g u v ps) where
   coe path := path.path
 
-def split_cycle {g : Graph α} {u v : α} {ps : List α}
+def split_cycle [DecidableEq α] {g : Graph α} {u v : α} {ps : List α}
     (path : g |= ps : u -> v)
     (h₁ : u ∈ ps)
     (h₂ : u ≠ v)
@@ -379,7 +378,7 @@ def split_cycle {g : Graph α} {u v : α} {ps : List α}
     )
   )
 
-def remove_cycle {g : Graph α} {u v : α} {ps : List α}
+def remove_cycle [DecidableEq α] {g : Graph α} {u v : α} {ps : List α}
     (path : g |= ps : u -> v)
     (h₁ : u ≠ v)
     : ∃ ps', Acyclic g u v ps' :=
@@ -398,7 +397,7 @@ def remove_cycle {g : Graph α} {u v : α} {ps : List α}
   else Exists.intro ps ⟨path, h₂⟩
 
 -- todo finish
-theorem merge {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
+theorem merge [DecidableEq α] {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     (path₁ : Path g u v ps₁)
     (path₂ : Path g v w ps₂)
     : ∃ps, Path g u w ps := by
@@ -424,7 +423,7 @@ theorem leave_vertex_no_revisit {g : Graph α} {u v : α} {ps₁ : List α}
   cases ps₂
   case nil => exact h₁.left rfl
   case cons x xs =>
-    simp [h₁] at h₂
+    simp only [List.cons_append, List.cons.injEq] at h₂
     have v_not_in := h₂.right
     rw [←h₂.left.right] at v_not_in
     apply Iff.subst List.mem_append v_not_in
@@ -515,7 +514,8 @@ theorem add_edge_new_start_from_singleton {g : Graph α} {u v : α}
   case cons x xs =>
     rw [cons_rest.left] at path
     have last := add_edge_new_start_from_must_use_last u_not_in v _ path
-    have := List.getLast?_eq_getLast (x :: xs) (by simp)
+    have := List.getLast?_eq_getLast (l := x :: xs)
+      (by simp only [ne_eq, reduceCtorEq, not_false_eq_true])
     simp at last
     rw [last] at this
     have := List.mem_of_mem_getLast? this |> cons_rest.right
@@ -593,7 +593,8 @@ theorem add_undirected_edge_new_start_from_singleton {g : Graph α} {u v : α}
     rw [cons_rest.left] at path
     have last :=
       add_undirected_edge_new_start_from_must_use_last u_not_in v _ path
-    have := List.getLast?_eq_getLast (x :: xs) (by simp)
+    have := List.getLast?_eq_getLast (l := x :: xs)
+      (by simp only [ne_eq, reduceCtorEq, not_false_eq_true])
     simp at last
     rw [last] at this
     have := List.mem_of_mem_getLast? this |> cons_rest.right
@@ -606,15 +607,17 @@ theorem add_undirected_edge_new_start_cycle_pathlist {g : Graph α} {u v : α}
   intro ps path
   cases path
   case edge h =>
-    simp; apply neq; apply Eq.symm
+    simp only [List.cons.injEq, List.ne_cons_self, and_false]
+    apply neq
+    apply Eq.symm
     exact add_undirected_edge_new_start_antisymm g u u_not_in v u (Or.inl h)
   case cons w ps path h₁ h₂ =>
     have vw_eq :=
       add_undirected_edge_new_start_antisymm g u u_not_in _ _ (Or.inl h₁)
-    simp [←vw_eq] at path
+    simp only [← vw_eq] at path
     have ps_single :=
       add_undirected_edge_new_start_from_singleton u_not_in ps path
-    simp [ps_single]
+    simp only [ps_single]
 
 -- todo clean up this function
 theorem add_undirected_edge_new_start_to_no_more {g : Graph α} {u v w : α}
@@ -663,7 +666,7 @@ theorem add_undirected_edge_makes_cycle {g : Graph α} {u v : α}
     : add_undirected_edge g ⟨u, v⟩ |= [u, v] : u -> u :=
   .cons (add_undirected_edge_adds g ⟨u, v⟩ |>.right)
     (.edge (add_undirected_edge_adds g ⟨u, v⟩ |>.left))
-    (List.not_mem_cons_of_ne_of_not_mem neq (List.not_mem_nil u))
+    (List.not_mem_cons_of_ne_of_not_mem neq List.not_mem_nil)
 
 theorem add_undirected_edge_self_makes_cycle (g : Graph α) (u : α)
     : add_undirected_edge g ⟨u, u⟩ |= [u] : u -> u :=
@@ -680,7 +683,7 @@ theorem add_undirected_edge_self_makes_cycle (g : Graph α) (u : α)
     case cons h₁ _path' h₂ ih => exact .cons h₁ ih h₂
   )
 
-theorem graph_merge_pathlist_left {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+theorem graph_merge_pathlist_left [DecidableEq α] {g₁ g₂ : Graph α} {u v : α} {ps : List α}
     (path : Digraph.merge g₁ g₂ |= ps : u -> v)
     (u_not_in : ¬has_vertex g₂ u)
     (ps_in : ∀ p ∈ ps, has_vertex g₁ p ∧ ¬has_vertex g₂ p)
@@ -697,7 +700,8 @@ theorem graph_merge_pathlist_left {g₁ g₂ : Graph α} {u v : α} {ps : List �
       )
     exact .cons h₁' path' h₂
 
-theorem graph_merge_pathlist_right {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+theorem graph_merge_pathlist_right [DecidableEq α]
+    {g₁ g₂ : Graph α} {u v : α} {ps : List α}
     (path : Digraph.merge g₁ g₂ |= ps : u -> v)
     (u_not_in : ¬has_vertex g₁ u)
     (ps_in : ∀ p ∈ ps, ¬has_vertex g₁ p ∧ has_vertex g₂ p)
@@ -795,7 +799,9 @@ theorem add_edge_not_use_finish_pres {g : Graph α} {u v w₁ w₂ : α}
     have e_in := add_edge_pres_edges g ⟨v', w'⟩ ⟨u, v⟩ e_neq |>.mpr h₁
     exact .cons e_in (ih v_not_in_ps') h₂
 
-theorem add_undirected_edge_new_start_pres {g : Graph α} {u v w₁ w₂ : α}
+theorem add_undirected_edge_new_start_pres [DecidableEq α]
+    {g : Graph α}
+    {u v w₁ w₂ : α}
     {ps : List α}
     (u_not_in : ¬has_vertex g u)
     (path : add_undirected_edge g ⟨u, v⟩ |= ps : w₁ -> w₂)
@@ -857,7 +863,8 @@ theorem add_vertices_pres {g : Graph α} {u v : α} {ps : List α}
   | cons h₁ _path' h₂ ih =>
     exact .cons (add_vertices_pres_edges _ _ _ |>.mp h₁) ih h₂
 
-theorem graph_merge_pres {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+theorem graph_merge_pres [DecidableEq α]
+    {g₁ g₂ : Graph α} {u v : α} {ps : List α}
     (or_path : (g₁ |= ps : u -> v) ∨ (g₂ |= ps : u -> v))
     : (Digraph.merge g₁ g₂) |= ps : u -> v := by
   apply Or.elim or_path <;> (
@@ -889,11 +896,11 @@ instance {g : Graph α} : Coe (Path (add_undirected_edge g e.flip) u v ps)
                              (Path (add_undirected_edge g e) u v ps) :=
   ⟨add_undirected_edge_flip_iff.mp⟩
 
-instance {g₁ g₂ : Graph α} : Coe (Path g₁ u v ps)
+instance [DecidableEq α]  {g₁ g₂ : Graph α} : Coe (Path g₁ u v ps)
                                  (Path (Digraph.merge g₁ g₂) u v ps) :=
   ⟨graph_merge_pres ∘ Or.inl⟩
 
-instance {g₁ g₂ : Graph α} : Coe (Path g₂ u v ps)
+instance [DecidableEq α]  {g₁ g₂ : Graph α} : Coe (Path g₂ u v ps)
                                  (Path (Digraph.merge g₁ g₂) u v ps) :=
   ⟨graph_merge_pres ∘ Or.inr⟩
 

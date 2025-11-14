@@ -4,7 +4,7 @@ import ControlFlow.Path
 namespace ControlFlow.Path
 
 variable {Graph : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 /- A directed path is restricted so that only the starting node can
     be revisited (to allow for a path to form a cycle). For our definition of
@@ -62,7 +62,8 @@ theorem prior_path_undirected_cons {g : Graph α} {u v w₁ w₂ : α} {ps : Lis
   case cons v' h₁ path' h₂ =>
     have v'w₁_eq := finish_cons_eq path'
     rw [v'w₁_eq] at path' h₁
-    have pathlist_start : ∀ (w : α) (ps' : List α), _ := by
+    -- ∀ w ps', ps ≠ ps' ++ [u, w]
+    have pathlist_start : ∀ w ps', (w₁ :: ps) ≠ ps' ++ [u, w] := by
       intro w' ps'
       have := upath.pathlist_start w' (v :: ps')
       simp at this
@@ -84,9 +85,11 @@ theorem cycle_length {g : Graph α} {u v : α} {ps : List α}
   intro eq len; simp [eq] at upath
   cases ps; case nil => contradiction
   case cons x xs =>
-    cases xs; case nil => simp [length] at len
+    cases xs; case nil =>
+      simp only [ List.length_cons, List.length_nil, Nat.zero_add,
+                  Nat.reduceEqDiff ] at len
     case cons y ys =>
-      simp [List.length_cons, List.length_eq_zero] at len
+      simp [List.length_cons, List.length_eq_zero_iff] at len
       have neq := upath.pathlist_start y []
       simp [len] at neq
       exact neq (finish_cons_eq upath.path |>.symm)
@@ -184,7 +187,9 @@ theorem add_edge_new_start_no_cycle {g : Graph α} {u v : α}
     add_undirected_edge_new_start_cycle_pathlist u_not_in neq ps upath.path
   exact upath.cycle_length rfl (by simp [this])
 
-theorem add_edge_self_makes_cycle {g : Graph α} (ug : UndirectedGraph g) (u : α)
+theorem add_edge_self_makes_cycle [DecidableEq α] {g : Graph α}
+    (ug : UndirectedGraph g)
+    (u : α)
     : Undirected (add_undirected_edge g ⟨u, u⟩) u u [u] :=
   ⟨ Path.add_undirected_edge_self_makes_cycle g u
   , add_edge ug ⟨u, u⟩
@@ -202,7 +207,8 @@ theorem add_edge_self_makes_cycle {g : Graph α} (ug : UndirectedGraph g) (u : �
     exact Undirected.mk path upath.undirected upath.pathlist_start
   )
 
-theorem graph_merge_pathlist_left {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+theorem graph_merge_pathlist_left [DecidableEq α]
+    {g₁ g₂ : Graph α} {u v : α} {ps : List α}
     (ug₁ : UndirectedGraph g₁)
     (upath : Undirected (Digraph.merge g₁ g₂) u v ps)
     (u_not_in : ¬has_vertex g₂ u)
@@ -213,7 +219,8 @@ theorem graph_merge_pathlist_left {g₁ g₂ : Graph α} {u v : α} {ps : List �
   , upath.pathlist_start
   ⟩
 
-theorem graph_merge_pathlist_right {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+theorem graph_merge_pathlist_right [DecidableEq α]
+    {g₁ g₂ : Graph α} {u v : α} {ps : List α}
     (ug₂ : UndirectedGraph g₂)
     (upath : Undirected (Digraph.merge g₁ g₂) u v ps)
     (u_not_in : ¬has_vertex g₁ u)
@@ -232,7 +239,8 @@ theorem add_vertex_pres {g : Graph α} {u v : α} {ps : List α} (w : α)
     : Undirected (add_vertex g w) u v ps :=
   ⟨ upath.path, add_vertex upath.undirected w, upath.pathlist_start⟩
 
-theorem add_edge_pres {g : Graph α} {u v : α} {ps : List α} (e : Edge α)
+theorem add_edge_pres [DecidableEq α] {g : Graph α} {u v : α} {ps : List α}
+    (e : Edge α)
     (upath : Undirected g u v ps)
     : Undirected (add_undirected_edge g e) u v ps :=
   ⟨ upath.path, add_edge upath.undirected e, upath.pathlist_start⟩
@@ -287,7 +295,8 @@ theorem add_edge_not_use_finish_pres {g : Graph α} {u v w₁ w₂ : α} {ps : L
   , upath.pathlist_start
   ⟩
 
-theorem graph_merge_pres {g₁ g₂ : Graph α} {u v : α} {ps : List α}
+theorem graph_merge_pres [DecidableEq α]
+    {g₁ g₂ : Graph α} {u v : α} {ps : List α}
     (ug₁ : UndirectedGraph g₁)
     (ug₂ : UndirectedGraph g₂)
     (or_upath : (Undirected g₁ u v ps) ∨ (Undirected g₂ u v ps))
@@ -306,7 +315,7 @@ instance {g : Graph α}
     : Coe (Undirected g u v ps) (Undirected (add_vertex g w) u v ps) :=
   ⟨add_vertex_pres w⟩
 
-instance {g : Graph α}
+instance [DecidableEq α] {g : Graph α}
     : Coe (Undirected g u v ps) (Undirected (add_undirected_edge g e) u v ps) :=
   ⟨add_edge_pres e⟩
 

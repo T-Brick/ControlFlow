@@ -5,7 +5,7 @@ namespace ControlFlow.Path
 open Digraph
 
 variable {Graph  : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 inductive Reachable (g : Graph α) : (u v : Vertices g) → Prop where
 | refl : Reachable g u u
@@ -15,7 +15,7 @@ inductive Reachable (g : Graph α) : (u v : Vertices g) → Prop where
 
 namespace Reachable
 
-theorem trans {g : Graph α} {u v w : Vertices g}
+theorem trans [DecidableEq α] {g : Graph α} {u v w : Vertices g}
     (r₁ : Reachable g u v)
     (r₂ : Reachable g v w)
     : Reachable g u w := by
@@ -33,7 +33,7 @@ nonrec def Vertices (g : Graph α) : Type := Vertices g
 instance {g : Graph α} : LE (Reachable.Vertices g) where
   le u v := Reachable g u v
 
-instance {g : Graph α} : Preorder (Reachable.Vertices g) where
+instance [DecidableEq α] {g : Graph α} : Preorder (Reachable.Vertices g) where
   le_refl u := .refl
   le_trans u v w := Reachable.trans
 
@@ -47,7 +47,10 @@ def edge' {g : Graph α} {e : Edge α} (e_in : e ∈ g)
   let evs_in := edge_vertices g e.start e.finish e_in
   let u : Vertices g := ⟨e.start, evs_in.left⟩
   let v : Vertices g := ⟨e.finish, evs_in.right⟩
-  let uv_in : ⟨u.val, v.val⟩ ∈ g := by simp [*]
+  let uv_in : ⟨u.val, v.val⟩ ∈ g := by
+    have u_eq_start : u.val = e.start := by simp only [u]
+    have v_eq_finish : v.val = e.finish := by simp only [v]
+    simp only [u_eq_start, v_eq_finish, e_in]
   ⟨evs_in.left, evs_in.right, edge uv_in⟩
 
 theorem toPath {g : Graph α} {u v : Vertices g}
@@ -57,7 +60,7 @@ theorem toPath {g : Graph α} {u v : Vertices g}
   case refl => contradiction
   case path ps path => exact Exists.intro ps path
 
-theorem toAcyclic {g : Graph α} {u v : Vertices g}
+theorem toAcyclic [DecidableEq α] {g : Graph α} {u v : Vertices g}
     (reach : Reachable g u v)
     (neq : u.val ≠ v.val)
     : ∃ ps, Acyclic g u.val v.val ps := by
@@ -69,7 +72,7 @@ theorem toAcyclic {g : Graph α} {u v : Vertices g}
   else
     exact Exists.intro ps ⟨path, u_in⟩
 
-theorem toUndirectedPath {g : Graph α} {u v : Vertices g}
+theorem toUndirectedPath [DecidableEq α] {g : Graph α} {u v : Vertices g}
     (ug : UndirectedGraph g)
     (reach : Reachable g u v)
     (neq : u.val ≠ v.val)
@@ -105,7 +108,8 @@ theorem add_undirected_edge_pres {g : Graph α} {u v : Digraph.Vertices g}
     exact Reachable.path ps (Path.add_undirected_edge_pres e path)
 
 @[simp] theorem add_undirected_edge_flip_iff {g : Graph α}
-    (u v : α) (e : Edge α)
+    (u v : α)
+    (e : Edge α)
     (u_in_e : has_vertex (add_undirected_edge g e) u)
     (u_in_eflip : has_vertex (add_undirected_edge g e.flip) u)
     (v_in_e : has_vertex (add_undirected_edge g e) v)
@@ -117,10 +121,11 @@ theorem add_undirected_edge_pres {g : Graph α} {u v : Digraph.Vertices g}
     cases reach
     case refl => exact .refl
     case path ps path =>
-      exact Reachable.path ps (add_undirected_edge_flip_iff.mp path)
+      exact Reachable.path ps (Path.add_undirected_edge_flip_iff.mp path)
   )
 
-theorem graph_merge_left {g₁ : Graph α} (g₂ : Graph α) {u v : α}
+theorem graph_merge_left [DecidableEq α]
+    {g₁ : Graph α} (g₂ : Graph α) {u v : α}
     (u_in : has_vertex g₁ u)
     (v_in : has_vertex g₁ v)
     (reach : Reachable g₁ ⟨u, u_in⟩ ⟨v, v_in⟩)
@@ -131,7 +136,9 @@ theorem graph_merge_left {g₁ : Graph α} (g₂ : Graph α) {u v : α}
   | refl => exact .refl
   | path ps path => exact .path ps ((graph_merge_pres ∘ Or.inl) path)
 
-theorem graph_merge_right (g₁ : Graph α) {g₂ : Graph α} {u v : α}
+theorem graph_merge_right [DecidableEq α]
+    (g₁ : Graph α)
+    {g₂ : Graph α} {u v : α}
     (u_in : has_vertex g₂ u)
     (v_in : has_vertex g₂ v)
     (reach : Reachable g₂ ⟨u, u_in⟩ ⟨v, v_in⟩)
@@ -142,7 +149,7 @@ theorem graph_merge_right (g₁ : Graph α) {g₂ : Graph α} {u v : α}
   | refl => exact .refl
   | path ps path => exact .path ps ((graph_merge_pres ∘ Or.inr) path)
 
-theorem graph_merge_disjoint {g₁ g₂ : Graph α} {u v : α}
+theorem graph_merge_disjoint [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
     (u_in_g₁ : has_vertex g₁ u)
     (v_in_g₂ : has_vertex g₂ v)
     (disjoint_left : ∀ w, has_vertex g₁ w → ¬has_vertex g₂ w)

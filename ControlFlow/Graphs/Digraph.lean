@@ -3,7 +3,7 @@ import ControlFlow.AuxDefs
 /- todo: reorganise, standardise names/theorems -/
 namespace ControlFlow
 
-variable [DecidableEq α]
+-- variable [DecidableEq α]
 
 structure Edge (α : Type) where
   start  : α
@@ -13,8 +13,8 @@ deriving Inhabited, Repr, DecidableEq
 instance : Coe (Edge α) (α × α) where coe e := (e.start, e.finish)
 instance : Coe (α × α) (Edge α) where coe e := ⟨e.fst, e.snd⟩
 
-def Edge.elem (v : α) (e : Edge α) : Bool := v = e.start || v = e.finish
-instance : Membership α (Edge α) where mem v e := Edge.elem v e
+def Edge.elem [DecidableEq α] (v : α) (e : Edge α) : Bool := v = e.start || v = e.finish
+instance [DecidableEq α] : Membership α (Edge α) where mem e v := Edge.elem v e
 
 @[simp] theorem Edge.elem_iff [DecidableEq α] {v : α} {e : Edge α}
     : Edge.elem v e = true ↔ v ∈ e :=
@@ -41,7 +41,7 @@ instance : Membership α (Edge α) where mem v e := Edge.elem v e
   simp only [flip, mk.injEq]
   exact fun ⟨h₁, h₂⟩ => ⟨h₂, h₁⟩
 
-@[simp] theorem Edge.mem_flip {w : α} {e: Edge α} : w ∈ e.flip ↔ w ∈ e := by
+@[simp] theorem Edge.mem_flip [DecidableEq α] {w : α} {e: Edge α} : w ∈ e.flip ↔ w ∈ e := by
   simp only [flip, ← elem_iff, elem, Bool.or_eq_true, decide_eq_true_eq]
   apply Iff.intro <;> (intro h; apply Or.symm; exact h)
 
@@ -90,13 +90,13 @@ class Digraph (α : Type) (T : (α : Type) → Type) where
   toVertices_has_vertex     : ∀ g v, v ∈ toVertices g ↔ has_vertex g v
 
 instance [Digraph α Graph] : Membership (Edge α) (Graph α) :=
-  ⟨fun e g => Digraph.has_edge g e⟩
+  ⟨fun g e => Digraph.has_edge g e⟩
 
 @[reducible] def Digraph.Oriented [Digraph α Graph] (g : Graph α) : Prop :=
   ∀ u v, ⟨u, v⟩ ∈ g → ⟨v, u⟩ ∉ g
 
 variable {Graph : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 namespace Digraph
 
@@ -188,6 +188,12 @@ theorem add_edge_new_finish_no_out_edge (g : Graph α) (u : α)
     (by simp; intro eq; have := uv_neq eq; contradiction)
     |>.mpr uw_in |> edge_vertices g u w |>.left |> u_not_in
 
+theorem add_edge_associative (g : Graph α)
+    (e₁ e₂ : Edge α)
+    : add_edge (add_edge g e₁) e₂ = add_edge (add_edge g e₂) e₁ := by
+  
+  sorry
+    
 theorem add_vertex_pres_existing_vertex (g : Graph α)
     : ∀ v₁ v₂, has_vertex g v₁ → has_vertex (add_vertex g v₂) v₁ := by
   intro v₁ v₂ h₁
@@ -270,23 +276,24 @@ theorem out_in_edges {g : Graph α} {u v : α}
   Digraph.out_edges g v
 @[reducible, simp] def pred_edges (g : Graph α) (v : α) : List (Edge α) :=
   Digraph.in_edges g v
-@[reducible, simp] def neighbors_edges (g : Graph α) (v : α) : List (Edge α) :=
+@[reducible, simp] def neighbors_edges [DecidableEq α] (g : Graph α) (v : α)
+    : List (Edge α) :=
   List.union (succ_edges g v) (pred_edges g v)
 
 def succ (g : Graph α) (v : α) : List α := succ_edges g v |>.map (·.finish)
 def pred (g : Graph α) (v : α) : List α := pred_edges g v |>.map (·.start)
-def neighbors (g : Graph α) (v : α) : List α :=
+def neighbors [DecidableEq α] (g : Graph α) (v : α) : List α :=
   List.union (succ g v) (pred g v)
 
 def deg_out (g : Graph α) (v : α) : Nat := (succ g v).length
 def deg_in  (g : Graph α) (v : α) : Nat := (pred g v).length
 
 notation:50 g:51 " |= " v:51 => has_vertex g v
-notation:50 g:51 " |= N⁺( " v:51 " ) " => succ g v
-notation:50 g:51 " |= N⁻( " v:51 " ) " => pred g v
-notation:50 g:51 " |= N( "  v:51 " ) " => neighbors g v
-notation:50 g:51 " |= deg_out( "  v:51 " ) " => deg_out g v
-notation:50 g:51 " |= deg_in( "  v:51 " ) " => deg_in g v
+-- notation:50 g:51 " |= N⁺( " v:51 " ) " => succ g v
+-- notation:50 g:51 " |= N⁻( " v:51 " ) " => pred g v
+-- notation:50 g:51 " |= N( "  v:51 " ) " => neighbors g v
+-- notation:50 g:51 " |= deg_out( "  v:51 " ) " => deg_out g v
+-- notation:50 g:51 " |= deg_in( "  v:51 " ) " => deg_in g v
 
 
 /- Successor theorems -/
@@ -315,6 +322,10 @@ theorem no_edge_no_succ {g : Graph α}
     : ∀ u, (∀ v, ⟨u, v⟩ ∉ g) → (∀ v, v ∉ succ g u) := by
   intro u e_not_in v v_in_s; exact e_not_in v (succ_edge_in_graph.mp v_in_s)
 
+theorem succ_of_in_graph {g : Graph α}
+    : ∀ u v, v ∈ succ g u → has_vertex g u := by
+  intro u v h; exact edge_vertices g u v (succ_edge_in_graph.mp h) |>.left
+
 
 /- Predecessor theorems -/
 
@@ -342,6 +353,10 @@ theorem no_edge_no_pred {g : Graph α}
     : ∀ u, (∀ v, ⟨v, u⟩ ∉ g) → (∀ v, v ∉ pred g u) := by
   intro u e_not_in v v_in_s; exact e_not_in v (pred_edge_in_graph.mp v_in_s)
 
+theorem pred_of_in_graph {g : Graph α}
+    : ∀ u v, v ∈ pred g u → has_vertex g u := by
+  intro u v h; exact edge_vertices g v u (pred_edge_in_graph.mp h) |>.right
+
 
 theorem in_succ_iff_in_pred {g : Graph α} {u v : α}
     : u ∈ succ g v ↔ v ∈ pred g u :=
@@ -351,7 +366,7 @@ theorem in_succ_iff_in_pred {g : Graph α} {u v : α}
 
 
 /- Neighbor theorems -/
-theorem neighbors_edge_in_graph {g : Graph α} {u v : α}
+theorem neighbors_edge_in_graph [DecidableEq α] {g : Graph α} {u v : α}
     : v ∈ neighbors g u ↔ ⟨u, v⟩ ∈ g ∨ ⟨v, u⟩ ∈ g := by
   simp [neighbors]
   apply Iff.intro <;> intro h₁
@@ -360,7 +375,8 @@ theorem neighbors_edge_in_graph {g : Graph α} {u v : α}
   . apply List.mem_union_iff.mpr
     exact Or.imp succ_edge_in_graph.mpr pred_edge_in_graph.mpr h₁
 
-theorem neighbors_in_graph {g : Graph α} {u v : α} (h₁ : v ∈ neighbors g u)
+theorem neighbors_in_graph [DecidableEq α] {g : Graph α} {u v : α}
+    (h₁ : v ∈ neighbors g u)
     : has_vertex g v := by
   apply Or.elim (neighbors_edge_in_graph.mp h₁) <;> intro h₂
   . exact edge_vertices g u v h₂ |>.right
@@ -516,12 +532,13 @@ theorem rem_edges_pres_vertex (g : Graph α) (edges : List (Edge α))
 
 /- Function and theorems for getting all edges from a list of vertices -/
 
-def all_neighbors (g : Graph α) (vertices : List α) : List (Edge α) :=
+def all_neighbors [DecidableEq α] (g : Graph α) (vertices : List α)
+    : List (Edge α) :=
   match vertices with
   | [] => []
   | v :: vs => List.union (neighbors_edges g v) (all_neighbors g vs)
 
-theorem all_neighbors_sound (g : Graph α) (vertices : List α)
+theorem all_neighbors_sound [DecidableEq α] (g : Graph α) (vertices : List α)
     : ∀ e, e.start ∈ vertices ∨ e.finish ∈ vertices
          → (e ∈ g → e ∈ all_neighbors g vertices) := by
   intro e h₁ h₂
@@ -551,7 +568,7 @@ theorem all_neighbors_sound (g : Graph α) (vertices : List α)
         apply List.mem_union_iff.mpr
         exact Or.inr (ih (Or.inr h₁))
 
-theorem all_neighbors_complete (g : Graph α) (vertices : List α)
+theorem all_neighbors_complete [DecidableEq α] (g : Graph α) (vertices : List α)
     : ∀ e ∈ all_neighbors g vertices, e ∈ g := by
   intro e h₁
   induction vertices <;> simp [all_neighbors] at h₁
@@ -568,9 +585,11 @@ theorem all_neighbors_complete (g : Graph α) (vertices : List α)
 
 /- Function and theorems for finding all edges in a graph -/
 
-def toEdges (g : Graph α) : List (Edge α) := all_neighbors g (toVertices g)
+def toEdges [DecidableEq α] (g : Graph α) : List (Edge α) :=
+  all_neighbors g (toVertices g)
 
-theorem toEdges_sound (g : Graph α) : ∀ e ∈ g, e ∈ toEdges g := by
+theorem toEdges_sound [DecidableEq α] (g : Graph α)
+    : ∀ e ∈ g, e ∈ toEdges g := by
   intro e h₁
   simp [toEdges]
   apply all_neighbors_sound g (toVertices g) e
@@ -579,13 +598,15 @@ theorem toEdges_sound (g : Graph α) : ∀ e ∈ g, e ∈ toEdges g := by
   exact edge_vertices g e.start e.finish h₁ |>.left
   exact h₁
 
-theorem toEdges_complete (g : Graph α) : ∀e ∈ toEdges g, e ∈ g := by
+theorem toEdges_complete [DecidableEq α] (g : Graph α)
+    : ∀e ∈ toEdges g, e ∈ g := by
   simp [toEdges]; exact all_neighbors_complete g (toVertices g)
 
-@[simp] theorem toEdges_iff (g : Graph α) : ∀e, e ∈ toEdges g ↔ e ∈ g := by
+@[simp] theorem toEdges_iff [DecidableEq α] (g : Graph α)
+    : ∀e, e ∈ toEdges g ↔ e ∈ g := by
   intro e; apply Iff.intro; exact toEdges_complete g e; exact toEdges_sound g e
 
-theorem toEdges_vertices_in_graph (g : Graph α)
+theorem toEdges_vertices_in_graph [DecidableEq α] (g : Graph α)
     : ∀ e ∈ toEdges g, ∀ v ∈ e, has_vertex g v := by
   intro e h₁ v h₂
   have := edge_vertices g e.start e.finish (toEdges_complete g e h₁)
@@ -744,7 +765,7 @@ theorem rem_vertices_in_list_or_not_graph (g : Graph α) (vertices : List α)
   case nil => simp at *; exact h₁
   case cons x xs ih =>
     if eq : v = x then simp [eq] else
-      simp only [eq, List.find?, List.mem_cons, eq, false_or]
+      simp only [List.mem_cons, eq, false_or]
       exact rem_vertex_pres_vertex _ _ _ eq |> Iff.not |>.mpr h₁ |> ih
 
 
@@ -763,7 +784,7 @@ theorem in_reverse_in_edges (edges : List (Edge α))
   simp [←h₂.right.left, ←h₂.right.right]
   exact h₂.left
 
-theorem reverse_pres_vertex (edges : List (Edge α)) (w : α)
+theorem reverse_pres_vertex [DecidableEq α] (edges : List (Edge α)) (w : α)
     : ∀ u v, ⟨u, v⟩ ∈ edges ∧ w ∈ (Edge.mk u v)
            ↔ ⟨v, u⟩ ∈ reverse_edges edges ∧ w ∈ (Edge.mk v u) := by
   intro u v
@@ -775,7 +796,7 @@ theorem reverse_pres_vertex (edges : List (Edge α)) (w : α)
   . simp [←Edge.elem_iff, Edge.elem] at *
     exact Or.symm h₁.right
 
-theorem reverse_toEdge_vertices_in_graph (g : Graph α)
+theorem reverse_toEdge_vertices_in_graph [DecidableEq α] (g : Graph α)
     : ∀ u v, ⟨u, v⟩ ∈ reverse_edges (toEdges g)
            → ∀ w ∈ (Edge.mk u v), has_vertex g w := by
   intro u v h₁ w h₂
@@ -785,12 +806,12 @@ theorem reverse_toEdge_vertices_in_graph (g : Graph α)
 
 /- Merging graphs -/
 
-def merge (g₁ g₂ : Graph α) : Graph α :=
+def merge [DecidableEq α] (g₁ g₂ : Graph α) : Graph α :=
   let g₁_vertices := Digraph.toVertices g₁
   let g₁_edges    := Digraph.toEdges g₁
   Digraph.add_edges (Digraph.add_vertices g₂ g₁_vertices) g₁_edges
 
-theorem merge_has_edge {g₁ g₂ : Graph α} {e : Edge α}
+theorem merge_has_edge [DecidableEq α] {g₁ g₂ : Graph α} {e : Edge α}
     : e ∈ merge g₁ g₂ ↔ e ∈ g₁ ∨ e ∈ g₂ := by
   simp [merge]; apply Iff.intro <;> intro h₁
   . rw [ ←toEdges_iff
@@ -802,7 +823,7 @@ theorem merge_has_edge {g₁ g₂ : Graph α} {e : Edge α}
     . exact add_edges_pres_existing_edge _ _ e
         (add_vertices_pres_edges g₂ _ e |>.mp h₁)
 
-theorem merge_has_vertex {g₁ g₂ : Graph α} {u : α}
+theorem merge_has_vertex [DecidableEq α] {g₁ g₂ : Graph α} {u : α}
     : has_vertex (merge g₁ g₂) u ↔ has_vertex g₁ u ∨ has_vertex g₂ u := by
   simp [merge]; apply Iff.intro <;> intro h₁
   . rw [←toVertices_has_vertex]
@@ -823,11 +844,11 @@ theorem merge_has_vertex {g₁ g₂ : Graph α} {u : α}
     . apply add_edges_pres_existing_vertex _ _ u
       exact add_vertices_pres_existing_vertex g₂ _ u h₁
 
-theorem merge_has_edge_comm {g₁ g₂ : Graph α} {e : Edge α}
+theorem merge_has_edge_comm [DecidableEq α] {g₁ g₂ : Graph α} {e : Edge α}
     : e ∈ merge g₁ g₂ ↔ e ∈ merge g₂ g₁ := by
   simp [merge_has_edge]; apply Iff.intro <;> (intro h; exact Or.symm h)
 
-theorem merge_has_vertex_comm {g₁ g₂ : Graph α} {u : α}
+theorem merge_has_vertex_comm [DecidableEq α] {g₁ g₂ : Graph α} {u : α}
     : has_vertex (merge g₁ g₂) u ↔ has_vertex (merge g₂ g₁) u := by
   simp [merge_has_vertex]; apply Iff.intro <;> (intro h; exact Or.symm h)
 
@@ -836,7 +857,7 @@ theorem merge_has_vertex_comm {g₁ g₂ : Graph α} {u : α}
 
 def Vertices (g : Graph α) := {v : α // has_vertex g v}
 
-instance {g : Graph α} : DecidableEq (Vertices g) :=
+instance [DecidableEq α] {g : Graph α} : DecidableEq (Vertices g) :=
   fun u v =>
     match decEq u.val v.val with
     | isFalse h₁ => isFalse (fun h₂ => h₁ (Subtype.val_inj.mpr h₂))
@@ -891,11 +912,11 @@ theorem trivial_no_edge (v : α)
 
 def of_succ (vertices : List α) (succ : α → List α) : Graph α :=
   add_edges (add_vertices empty vertices)
-            (vertices.bind (fun v => succ v |>.map (v, ·)))
+            (vertices.flatMap (fun v => succ v |>.map (v, ·)))
 
 def of_pred (vertices : List α) (pred : α → List α) : Graph α :=
   add_edges (add_vertices empty vertices)
-            (vertices.bind (fun v => pred v |>.map (·, v)))
+            (vertices.flatMap (fun v => pred v |>.map (·, v)))
 
 theorem of_succ_vertices_in {v : α} {vertices : List α} {succ : α → List α}
     : v ∈ vertices → has_vertex (of_succ vertices succ : Graph α) v :=

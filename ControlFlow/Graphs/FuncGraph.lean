@@ -24,12 +24,12 @@ def FuncGraphType.empty : FuncGraphType α :=
   , edges              := fun _ => false
   , out_edges          := fun _ => []
   , in_edges           := fun _ => []
-  , edge_vertices      := by simp
-  , out_edges_has_edge := by simp
-  , out_edges_start    := by simp
-  , in_edges_has_edge  := by simp
-  , in_edges_finish    := by simp
-  , toList_has_vertex  := by simp
+  , edge_vertices      := by simp only [Bool.false_eq_true, and_self, imp_self, implies_true]
+  , out_edges_has_edge := by simp only [List.not_mem_nil, Bool.false_eq_true, implies_true]
+  , out_edges_start    := by simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+  , in_edges_has_edge  := by simp only [List.not_mem_nil, Bool.false_eq_true, implies_true]
+  , in_edges_finish    := by simp only [List.not_mem_nil, IsEmpty.forall_iff, implies_true]
+  , toList_has_vertex  := by simp only [List.not_mem_nil, Bool.false_eq_true, implies_true]
   }
 
 @[reducible]
@@ -204,19 +204,18 @@ def FuncGraphType.add_edge : FuncGraphType α → Edge α → FuncGraphType α :
               let p := (fun v => !decide (v = e.finish))
               have := (List.filter_preserve_in p g.vertex_list v).mp
                 ⟨ h₁.mpr h₂
-                , by simp only [p, v_eq, decide_False, Bool.not_false]
+                , by simp only [v_eq, decide_false, Bool.not_false, p]
                 ⟩
               exact Or.inr this
           else
-            simp only [eq, ↓reduceIte, List.mem_cons, Or.assoc]
+            simp only [ eq, ↓reduceIte, List.mem_cons, List.mem_filter,
+                        Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true,
+                        decide_eq_false_iff_not, Or.assoc ]
             if v_eq_s : v = e.start then exact Or.inl (Or.inl v_eq_s) else
             if v_eq_f : v = e.finish then exact Or.inl (Or.inr v_eq_f) else
             simp only [v_eq_s, v_eq_f, or_self, false_or] at h₂ ⊢
-            let p := (fun v => !decide (v = e.start) && !decide (v = e.finish))
-            apply (List.filter_preserve_in p g.vertex_list v).mp
-            refine ⟨h₁.mpr h₂, ?_⟩
-            simp only [v_eq_s, decide_False, Bool.not_false, v_eq_f,
-              Bool.and_self, p]
+            simp only [not_false_eq_true, and_self, and_true]
+            exact h₁.mpr h₂
     ⟩
 
 @[reducible]
@@ -242,8 +241,8 @@ def FuncGraphType.rem_edge : FuncGraphType α → Edge α → FuncGraphType α :
           . intro h₂
             simp only [h₂] at h₁
             have := List.filter_remove p (FuncGraphType.out_edges g u) e
-              (by simp only [ne_eq, decide_not, decide_True, Bool.not_true,
-                    not_false_eq_true, p])
+              (by simp only [ ne_eq, decide_not, decide_true, Bool.not_true,
+                              Bool.false_eq_true, not_false_eq_true, p ])
             apply this
             simp only [ne_eq, decide_not, p]
             exact h₁
@@ -269,8 +268,8 @@ def FuncGraphType.rem_edge : FuncGraphType α → Edge α → FuncGraphType α :
           . intro h₂
             simp only [h₂] at h₁
             have := List.filter_remove p (FuncGraphType.in_edges g v) e
-              (by simp only [ne_eq, decide_not, decide_True, Bool.not_true,
-                    not_false_eq_true, p])
+              (by simp only [ ne_eq, decide_not, decide_true, Bool.not_true,
+                              Bool.false_eq_true, not_false_eq_true, p ])
             apply this
             simp only [ne_eq, decide_not, p]
             exact h₁
@@ -318,9 +317,8 @@ def FuncGraphType.add_vertex : FuncGraphType α → α → FuncGraphType α :=
         . apply (g.toList_has_vertex u).mp
           exact List.filter_preserve_in _ g.vertex_list u |>.mpr h₁ |>.left
         . apply List.filter_preserve_in _ g.vertex_list u |>.mp
-          apply And.intro
-          exact g.toList_has_vertex u |>.mpr h₁
-          simp only [eq, decide_False, Bool.not_false]
+          refine ⟨g.toList_has_vertex u |>.mpr h₁, ?_⟩
+          simp only [eq, decide_false, Bool.not_false]
     ⟩
 
 @[reducible]
@@ -348,8 +346,8 @@ def FuncGraphType.rem_vertex : FuncGraphType α → α → FuncGraphType α :=
           apply And.intro
           . apply And.intro <;> (
               intro eq
-              simp only [eq, decide_True, Bool.not_true, Bool.false_and,
-                Bool.and_false, and_false] at this
+              simp only [ eq, decide_true, Bool.not_true, Bool.false_and,
+                          Bool.and_false, Bool.false_eq_true, and_false] at this
             )
           . exact (g.out_edges_has_edge u w).mp this.left
         . apply List.filter_preserve_in _ (out_edges g u) ⟨u, w⟩ |>.mp
@@ -370,8 +368,8 @@ def FuncGraphType.rem_vertex : FuncGraphType α → α → FuncGraphType α :=
           apply And.intro
           . apply And.intro <;> (
               intro eq
-              simp only [eq, decide_True, Bool.not_true, Bool.false_and,
-                Bool.and_false, and_false] at this
+              simp only [ eq, decide_true, Bool.not_true, Bool.false_and,
+                          Bool.and_false, Bool.false_eq_true, and_false] at this
             )
           . exact (g.in_edges_has_edge u w).mp this.left
         . apply List.filter_preserve_in _ (in_edges g w) ⟨u, w⟩ |>.mp
@@ -411,9 +409,9 @@ def FuncGraph [DecidableEq α] : Digraph α (FuncGraphType) :=
   , in_edges      := fun g => g.in_edges
   , toVertices    := fun g => g.vertex_list
   , edge_vertices := by intro g; exact g.edge_vertices
-  , empty_edges   := by simp only [not_false_eq_true, implies_true]
-  , empty_vertex  := by simp only [not_false_eq_true, implies_true]
-  , add_edge_adds := by simp only [decide_True, Bool.true_or, implies_true]
+  , empty_edges   := by simp only [Bool.false_eq_true, not_false_eq_true, implies_true]
+  , empty_vertex  := by simp only [Bool.false_eq_true, not_false_eq_true, implies_true]
+  , add_edge_adds := by simp only [decide_true, Bool.true_or, implies_true]
   , add_edge_pres_edges := by
       simp only [ne_eq, Bool.or_eq_true, decide_eq_true_eq]
       intro g e₁ e₂ h₁
@@ -434,15 +432,15 @@ def FuncGraph [DecidableEq α] : Digraph α (FuncGraphType) :=
           | inr h₃ => contradiction
         | inr h₃ => exact h₃
   , rem_edge_removes := by
-      simp only [ne_eq, not_true_eq_false, decide_False, Bool.false_and,
-        not_false_eq_true, implies_true]
+      simp only [ ne_eq, not_true_eq_false, decide_false, Bool.false_and,
+                  Bool.false_eq_true, not_false_eq_true, implies_true ]
   , rem_edge_pres_edges := by
       simp only [ne_eq, decide_not, Bool.and_eq_true, Bool.not_eq_true',
         decide_eq_false_iff_not, iff_and_self]
       intro g e₁ e₂ h₁ _h₂
       exact h₁
   , rem_edge_pres_vertex := by simp only [implies_true]
-  , add_vertex_adds := by simp only [decide_True, Bool.true_or, implies_true]
+  , add_vertex_adds := by simp only [decide_true, Bool.true_or, implies_true]
   , add_vertex_pres_edges := by simp only [implies_true]
   , add_vertex_pres_vertex := by
       simp only [ne_eq, Bool.or_eq_true, decide_eq_true_eq]
@@ -453,12 +451,12 @@ def FuncGraph [DecidableEq α] : Digraph α (FuncGraphType) :=
         | inl h₂ => have := h₂.symm; contradiction
         | inr h₂ => exact h₂
   , rem_vertex_removes_vertex := by
-      simp only [ne_eq, not_true_eq_false, decide_False, Bool.false_and,
-        not_false_eq_true, implies_true]
+      simp only [ ne_eq, not_true_eq_false, decide_false, Bool.false_and,
+                  Bool.false_eq_true, not_false_eq_true, implies_true ]
   , rem_vertex_removes_edge := by
-      simp only [ne_eq, decide_not, not_true_eq_false, decide_False,
-        Bool.and_false, Bool.false_and, not_false_eq_true, and_self,
-        implies_true]
+      simp only [ ne_eq, decide_not, not_true_eq_false, decide_false,
+                  Bool.and_false, Bool.false_and, Bool.false_eq_true,
+                  not_false_eq_true, and_self, implies_true ]
   , rem_vertex_pres_edges := by
       simp only [ne_eq, decide_not, Bool.and_eq_true, Bool.not_eq_true',
         decide_eq_false_iff_not, iff_and_self]
