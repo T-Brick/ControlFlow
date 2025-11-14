@@ -1,5 +1,6 @@
 import Batteries
 import Mathlib.Data.List.Basic
+import Mathlib.Order.Basic
 
 theorem _root_.List.filter_remove [DecidableEq α]
     (p : α → Bool) (l : List α) (v : α)

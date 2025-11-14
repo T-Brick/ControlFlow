@@ -115,7 +115,7 @@ where walker (itree : _root_.Tree α)
 
     have lt_in_tree' := fun m h =>
       if eq : m = id then Exists.intro x (by simp [eq]; exact x'_in_tree') else
-      let res := lt_in_tree m (lt_of_le_of_ne (Nat.lt_succ_iff.mp h) eq)
+      let res := lt_in_tree m (Nat.lt_of_le_of_ne (Nat.lt_succ_iff.mp h) eq)
       Exists.elim res (fun y in_tree =>
         Exists.intro y (add_undirected_edge_pres_existing_vertex _ _ _ in_tree)
       )

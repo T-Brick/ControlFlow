@@ -7,27 +7,27 @@ open Digraph
 open CFG
 
 variable {Graph : (α : Type) → Type}
-variable [Digraph α Graph] [DecidableEq α]
+variable [Digraph α Graph]
 
 structure Dom (g : Graph α) (e v₁ v₂ : Vertices g) : Prop where
   reach : Path.Reachable g e v₂
   in_path : (∀ ps, (g |= ps : e.val -> v₂.val) → v₁.val ∈ ps)
 
-structure Dom.Strict (g : Graph α) (e v₁ v₂ : Vertices g)
-    extends Dom g e v₁ v₂ : Prop where
+structure Dom.Strict (g : Graph α) (e v₁ v₂ : Vertices g) : Prop
+    extends Dom g e v₁ v₂ where
   differ : v₁ ≠ v₂
 
 /- v is the immediate dominator of w if
     v ≫ w and every other dominator (u) of w dominates v as well
 -/
-structure Dom.Immediate (g : Graph α) (e v w : Vertices g)
-    extends Dom.Strict g e v w : Prop where
+structure Dom.Immediate (g : Graph α) (e v w : Vertices g) : Prop
+    extends Dom.Strict g e v w where
   others : ∀ u, Dom.Strict g e u w → Dom.Strict g e u v
 
 -- maybe make cursed notation local
-notation:50 g:51 "(" e:51 ") |= " v₁:51 " ≫= " v₂:51 => Dom g e v₁ v₂
-notation:50 g:51 "(" e:51 ") |= " v₁:51 " ≫ " v₂:51  => Dom.Strict g e v₁ v₂
-notation:50 g:51 "(" e:51 ") |= " v₁:51 " ⋙ " v₂:51  => Dom.Immediate g e v₁ v₂
+notation:50 g:51 "(" e:51 ")" " |= " v₁:51 " ≫= " v₂:51 => Dom g e v₁ v₂
+notation:50 g:51 "(" e:51 ")" " |= " v₁:51 " ≫ " v₂:51  => Dom.Strict g e v₁ v₂
+notation:50 g:51 "(" e:51 ")" " |= " v₁:51 " ⋙ " v₂:51  => Dom.Immediate g e v₁ v₂
 
 namespace Dom
 
@@ -52,7 +52,7 @@ theorem Strict.cfg_not_refl {cfg : CFG α Graph} {v : Vertices cfg.digraph}
     : ¬cfg.digraph(cfg.start) |= v ≫ v :=
   Strict.not_refl
 
-theorem antisymm {g : Graph α} {e v₁ v₂ : Vertices g}
+theorem antisymm [DecidableEq α] {g : Graph α} {e v₁ v₂ : Vertices g}
     (d₁ : g(e) |= v₂ ≫= v₁)
     (d₂ : g(e) |= v₁ ≫= v₂)
     : v₁ = v₂ := by
@@ -83,14 +83,16 @@ theorem antisymm {g : Graph α} {e v₁ v₂ : Vertices g}
       contradiction
     case isTrue eq => exact Subtype.mk_eq_mk.mpr eq
 
-theorem cfg_antisymm {cfg : CFG α Graph} {v₁ v₂ : Vertices cfg.digraph}
+theorem cfg_antisymm [DecidableEq α]
+    {cfg : CFG α Graph} {v₁ v₂ : Vertices cfg.digraph}
     (d₁ : cfg.digraph(cfg.start) |= v₂ ≫= v₁)
     (d₂ : cfg.digraph(cfg.start) |= v₁ ≫= v₂)
     : v₁ = v₂ :=
   antisymm d₁ d₂
 
 -- hehe
-theorem trans {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : Vertices g}
+theorem trans [DecidableEq α]
+    {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : Vertices g}
     (d₁ : g(e) |= v₁ ≫= v₂)
     (d₂ : g(e) |= v₂ ≫= v₃)
     : g(e) |= v₁ ≫= v₃ := by
@@ -110,13 +112,15 @@ theorem trans {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : Vertices g}
       )
     ⟩
 
-theorem cfg_trans {cfg : CFG α Graph} {v₁ v₂ v₃ : Vertices cfg.digraph}
+theorem cfg_trans [DecidableEq α]
+    {cfg : CFG α Graph} {v₁ v₂ v₃ : Vertices cfg.digraph}
     (d₁ : cfg.digraph(cfg.start) |= v₁ ≫= v₂)
     (d₂ : cfg.digraph(cfg.start) |= v₂ ≫= v₃)
     : cfg.digraph(cfg.start) |= v₁ ≫= v₃ :=
   trans d₁ d₂
 
-nonrec theorem Strict.trans {g : Graph α} {e v₁ v₂ v₃ : Vertices g}
+nonrec theorem Strict.trans [DecidableEq α]
+    {g : Graph α} {e v₁ v₂ v₃ : Vertices g}
     (d₁ : g(e) |= v₁ ≫ v₂)
     (d₂ : g(e) |= v₂ ≫ v₃)
     : g(e) |= v₁ ≫ v₃ := by
@@ -138,7 +142,8 @@ nonrec theorem Strict.trans {g : Graph α} {e v₁ v₂ v₃ : Vertices g}
       exact Path.finish_in_pathlist h.right.right.right
   ⟩
 
-theorem Strict.cfg_trans {cfg : CFG α Graph} {v₁ v₂ v₃ : Vertices cfg.digraph}
+theorem Strict.cfg_trans [DecidableEq α]
+    {cfg : CFG α Graph} {v₁ v₂ v₃ : Vertices cfg.digraph}
     (d₁ : cfg.digraph(cfg.start) |= v₁ ≫ v₂)
     (d₂ : cfg.digraph(cfg.start) |= v₂ ≫ v₃)
     : cfg.digraph(cfg.start) |= v₁ ≫ v₃ :=
@@ -150,7 +155,8 @@ theorem total {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : Vertices g}
     : g(e) |= v₁ ≫= v₂ ∨ g(e) |= v₂ ≫= v₁ := by
   sorry
 
-theorem dom_iff_sdom_not_sdom {g : Graph α} {e v₁ v₂ : Vertices g}
+theorem dom_iff_sdom_not_sdom [DecidableEq α]
+    {g : Graph α} {e v₁ v₂ : Vertices g}
     : g(e) |= v₁ ≫ v₂ ↔ g(e) |= v₁ ≫= v₂ ∧ ¬g(e) |= v₂ ≫= v₁ := by
   apply Iff.intro
   . intro d₁
@@ -164,11 +170,11 @@ theorem dom_iff_sdom_not_sdom {g : Graph α} {e v₁ v₂ : Vertices g}
 
 instance {cfg : CFG α Graph} : LE (Vertices cfg.digraph) := ⟨Dom.ofCFG cfg⟩
 instance {cfg : CFG α Graph} : LT (Vertices cfg.digraph) := ⟨Dom.Strict.ofCFG cfg⟩
-instance {cfg : CFG α Graph} : Preorder (Vertices cfg.digraph) where
+instance [DecidableEq α] {cfg : CFG α Graph} : Preorder (Vertices cfg.digraph) where
   le_refl := cfg_refl
   le_trans _ _ _ d₁ d₂ := cfg_trans d₁ d₂
-  lt_iff_le_not_le _ _ := dom_iff_sdom_not_sdom
-instance {cfg : CFG α Graph} : PartialOrder (Vertices cfg.digraph) where
+  lt_iff_le_not_ge _ _ := dom_iff_sdom_not_sdom
+instance [DecidableEq α] {cfg : CFG α Graph} : PartialOrder (Vertices cfg.digraph) where
   le_antisymm _ _ d₁ d₂ := cfg_antisymm (cfg := cfg) d₂ d₁
 
 -- Any algorithm which computes dominance sets should obey these properties
@@ -190,8 +196,8 @@ instance [DecidableEq (Set α)] : DecidableEq (Dom α) :=
   fun a b => by
     cases a <;> cases b
     case none.none => exact .isTrue rfl
-    case none.some bv => exact .isFalse (by simp only [not_false_eq_true])
-    case some.none av => exact .isFalse (by simp only [not_false_eq_true])
+    case none.some bv => exact .isFalse (by simp only [reduceCtorEq, not_false_eq_true])
+    case some.none av => exact .isFalse (by simp only [reduceCtorEq, not_false_eq_true])
     case some.some av bv =>
       simp only [Option.some_inj (a := av)]
       exact decEq av bv
@@ -247,7 +253,7 @@ theorem Dom.LE.join_left (x y : Dom α) : Dom.LE x (x.join y) := by
   case some xv =>
     cases y
     case none => exact .refl
-    case some yv => exact Dom.LE.subset (Set.inter_subset_left xv yv)
+    case some yv => exact Dom.LE.subset Set.inter_subset_left
 
 theorem Dom.LE.join_right (x y : Dom α) : Dom.LE y (x.join y) := by
   cases x
@@ -255,7 +261,7 @@ theorem Dom.LE.join_right (x y : Dom α) : Dom.LE y (x.join y) := by
   case some xv =>
     cases y
     case none => exact .bot
-    case some yv => exact Dom.LE.subset (Set.inter_subset_right xv yv)
+    case some yv => exact Dom.LE.subset Set.inter_subset_right
 
 theorem Dom.LE.join_lub
     (h₁ : Dom.LE x z)
@@ -301,7 +307,7 @@ def Dom.flow (v : α) (input : Dom α) : Dom α :=
 
 theorem Dom.flow_monotonic (v : α) : Monotone (Dom.flow v) := by
   intro a b h₁
-  rw [flow, flow]
+  rw [flow.eq_def, flow.eq_def]
   cases a <;> cases b <;> simp
   case none.some bv => exact .bot
   case some.none av => contradiction
@@ -311,7 +317,7 @@ theorem Dom.flow_monotonic (v : α) : Monotone (Dom.flow v) := by
     case a.refl => rfl
     case a.subset h₁ => exact Set.insert_subset_insert h₁
 
-def compute [DecidableEq (Set α)] (cfg : CFG α Graph) : Unit :=
+def compute [DecidableEq α] [DecidableEq (Set α)] (cfg : CFG α Graph) : Unit :=
   let res := Dataflow.kildall cfg Dom.flow ⊤ .forward .may Dom.flow_monotonic
   sorry
 

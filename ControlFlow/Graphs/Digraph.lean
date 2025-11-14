@@ -188,12 +188,6 @@ theorem add_edge_new_finish_no_out_edge (g : Graph α) (u : α)
     (by simp; intro eq; have := uv_neq eq; contradiction)
     |>.mpr uw_in |> edge_vertices g u w |>.left |> u_not_in
 
-theorem add_edge_associative (g : Graph α)
-    (e₁ e₂ : Edge α)
-    : add_edge (add_edge g e₁) e₂ = add_edge (add_edge g e₂) e₁ := by
-  
-  sorry
-    
 theorem add_vertex_pres_existing_vertex (g : Graph α)
     : ∀ v₁ v₂, has_vertex g v₁ → has_vertex (add_vertex g v₂) v₁ := by
   intro v₁ v₂ h₁
