@@ -5,10 +5,10 @@ namespace ControlFlow
 variable {Graph : (α : Type) → Type}
 variable [Digraph α Graph]
 
-@[reducible, simp] def Digraph.Cyclic [Digraph α Graph] (g : Graph α) : Prop :=
+@[reducible, simp] def Digraph.Cyclic (g : Graph α) : Prop :=
   ∃ v, ∃ ps, Path g v v ps
 
-@[reducible, simp] def Digraph.Acyclic [Digraph α Graph] (g : Graph α) : Prop :=
+@[reducible, simp] def Digraph.Acyclic (g : Graph α) : Prop :=
   ∀ v, ¬∃ ps, Path g v v ps
 
 @[simp] abbrev DAG : (g : Graph α) → Prop := Digraph.Acyclic
@@ -36,9 +36,9 @@ theorem Reachable.antisymm [DecidableEq α]
       have := dag u ps h₁
       contradiction
 
-instance [DecidableEq α] {g : Graph α} (dag : DAG g)
-    : PartialOrder (Reachable.Vertices g) where
-  le_antisymm u v := Reachable.antisymm dag (u := u) (v := v)
+-- instance [DecidableEq α] {g : Graph α} (dag : DAG g)
+--     : PartialOrder (Reachable.Vertices g) where
+--   le_antisymm u v := Reachable.antisymm dag (u := u) (v := v)
 
 end Path
 

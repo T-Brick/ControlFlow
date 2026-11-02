@@ -79,7 +79,6 @@ def FuncGraphType.add_edge : FuncGraphType α → Edge α → FuncGraphType α :
             simp only [eq, false_and, ↓reduceIte] at h₂
             exact Or.inr (h₁.mp h₂)
         . if eq : u = e.start then
-            simp only at h₂
             if e_in : e ∈ g.out_edges u then
               simp only [e_in, not_true_eq_false, and_false, ↓reduceIte]
               cases h₂ with
@@ -137,7 +136,6 @@ def FuncGraphType.add_edge : FuncGraphType α → Edge α → FuncGraphType α :
             simp only [eq, false_and, ↓reduceIte] at h₂
             exact Or.inr (h₁.mp h₂)
         . if eq : v = e.finish then
-            simp only at h₂
             if e_in : e ∈ g.in_edges v then
               simp only [e_in, not_true_eq_false, and_false, ↓reduceIte]
               cases h₂ with
@@ -397,7 +395,7 @@ def FuncGraphType.rem_vertex : FuncGraphType α → α → FuncGraphType α :=
           exact g.toList_has_vertex u |>.mpr h₁.right
     ⟩
 
-def FuncGraph [DecidableEq α] : Digraph α (FuncGraphType) :=
+def FuncGraph : Digraph α (FuncGraphType) :=
   { empty         := FuncGraphType.empty
   , has_edge      := (·.edges)
   , has_vertex    := (·.vertices)

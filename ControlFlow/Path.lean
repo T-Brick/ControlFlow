@@ -22,7 +22,7 @@ open Digraph
 
 notation:50 g:51 " |= " p:51 " : " s:51 " -> " t:51 => Path g s t p
 
-def merge_disjoint {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
+theorem merge_disjoint {g : Graph α} {u v w : α} {ps₁ ps₂ : List α}
     (path₁ : Path g u v ps₁)
     (path₂ : Path g v w ps₂)
     (h₁ : List.Disjoint ps₁ ps₂)
@@ -177,7 +177,7 @@ theorem last_pathlist_imp_edge {g : Graph α} {u v w : α} {ps : List α}
     rw [List.getLast_cons (pathlist_nonempty path')] at w_last
     exact ih w_last
 
-def split [DecidableEq α] {g : Graph α} {u v w : α} {ps : List α}
+theorem split [DecidableEq α] {g : Graph α} {u v w : α} {ps : List α}
     (h₁ : v ∈ ps)
     (h₂ : v ≠ w)
     (path : g |= ps : u -> w)
@@ -352,7 +352,7 @@ structure Acyclic (g : Graph α) (u v : α) (ps : List α) : Prop where
 instance {g : Graph α} : Coe (Acyclic g u v ps) (Path g u v ps) where
   coe path := path.path
 
-def split_cycle [DecidableEq α] {g : Graph α} {u v : α} {ps : List α}
+theorem split_cycle [DecidableEq α] {g : Graph α} {u v : α} {ps : List α}
     (path : g |= ps : u -> v)
     (h₁ : u ∈ ps)
     (h₂ : u ≠ v)
@@ -378,7 +378,7 @@ def split_cycle [DecidableEq α] {g : Graph α} {u v : α} {ps : List α}
     )
   )
 
-def remove_cycle [DecidableEq α] {g : Graph α} {u v : α} {ps : List α}
+theorem remove_cycle [DecidableEq α] {g : Graph α} {u v : α} {ps : List α}
     (path : g |= ps : u -> v)
     (h₁ : u ≠ v)
     : ∃ ps', Acyclic g u v ps' :=
@@ -514,7 +514,7 @@ theorem add_edge_new_start_from_singleton {g : Graph α} {u v : α}
   case cons x xs =>
     rw [cons_rest.left] at path
     have last := add_edge_new_start_from_must_use_last u_not_in v _ path
-    have := List.getLast?_eq_getLast (l := x :: xs)
+    have := List.getLast?_eq_some_getLast (l := x :: xs)
       (by simp only [ne_eq, reduceCtorEq, not_false_eq_true])
     simp at last
     rw [last] at this
@@ -593,7 +593,7 @@ theorem add_undirected_edge_new_start_from_singleton {g : Graph α} {u v : α}
     rw [cons_rest.left] at path
     have last :=
       add_undirected_edge_new_start_from_must_use_last u_not_in v _ path
-    have := List.getLast?_eq_getLast (l := x :: xs)
+    have := List.getLast?_eq_some_getLast (l := x :: xs)
       (by simp only [ne_eq, reduceCtorEq, not_false_eq_true])
     simp at last
     rw [last] at this

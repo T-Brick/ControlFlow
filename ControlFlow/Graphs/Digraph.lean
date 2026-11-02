@@ -855,7 +855,7 @@ instance [DecidableEq α] {g : Graph α} : DecidableEq (Vertices g) :=
   fun u v =>
     match decEq u.val v.val with
     | isFalse h₁ => isFalse (fun h₂ => h₁ (Subtype.val_inj.mpr h₂))
-    | isTrue  h₁ => isTrue (Subtype.eq h₁)
+    | isTrue  h₁ => isTrue (Subtype.ext h₁)
 
 instance {g : Graph α} {w : α}
     : Coe (Vertices g) (Vertices (add_vertex g w)) where

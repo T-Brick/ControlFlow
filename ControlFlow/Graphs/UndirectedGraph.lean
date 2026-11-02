@@ -345,7 +345,7 @@ namespace UndirectedGraph
 
 open Digraph
 
-def add_edge  [DecidableEq α] {g : Graph α}
+theorem add_edge [DecidableEq α] {g : Graph α}
     (ug : UndirectedGraph g)
     (e : Edge α)
     : UndirectedGraph (Digraph.add_undirected_edge g e) :=
@@ -380,7 +380,7 @@ def add_edge  [DecidableEq α] {g : Graph α}
       )
     )
 
-def rem_edge [DecidableEq α] {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
+theorem rem_edge [DecidableEq α] {g : Graph α} (ug : UndirectedGraph g) (e : Edge α)
     : UndirectedGraph (Digraph.rem_undirected_edge g e) :=
   ⟨by intro u v
       if eq_uv : e = ⟨u, v⟩ then
@@ -404,7 +404,7 @@ def rem_edge [DecidableEq α] {g : Graph α} (ug : UndirectedGraph g) (e : Edge 
         rw [←h₁, ←h₂, ug.undirected u v]
   ⟩
 
-def add_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
+theorem add_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
     : UndirectedGraph (Digraph.add_vertex g w) :=
   ⟨by intro u v
       have pres := Digraph.add_vertex_pres_edges g w
@@ -412,7 +412,7 @@ def add_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
       exact ug.undirected u v
   ⟩
 
-def rem_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
+theorem rem_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
     : UndirectedGraph (Digraph.rem_vertex g w) :=
   ⟨by intro u v
       have := Digraph.rem_vertex_removes_edge g
@@ -432,14 +432,14 @@ def rem_vertex {g : Graph α} (ug : UndirectedGraph g) (w : α)
         exact ug.undirected u v
   ⟩
 
-def empty : UndirectedGraph (Digraph.empty : Graph α) :=
+theorem empty : UndirectedGraph (Digraph.empty : Graph α) :=
   ⟨by intro u v
       have uv := Digraph.empty_edges (α:=α) (T := Graph) ⟨u, v⟩
       have vu := Digraph.empty_edges (α:=α) (T := Graph) ⟨v, u⟩
       apply Iff.intro <;> (intro h; contradiction)
   ⟩
 
-def trivial (w : α) : UndirectedGraph (Digraph.trivial w : Graph α) :=
+theorem trivial (w : α) : UndirectedGraph (Digraph.trivial w : Graph α) :=
   ⟨by intro u v; apply Iff.intro <;> (
         intro h; have := Digraph.trivial_no_edge _ _ h; contradiction
       )

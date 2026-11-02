@@ -178,3 +178,36 @@ theorem neq_symm [DecidableEq α] {x y : α} (h₁ : ¬x = y) : (¬y = x) :=
   . apply Or.elim h₁ <;> intro h₂
     . apply Or.elim h₂ <;> intro h₃ <;> simp [*]
     . simp [h₂]
+
+instance [DecidableEq α] [Hashable α] : Insert α (Std.ExtHashSet α) :=
+  ⟨fun a s => s.insert a⟩
+
+instance [DecidableEq α] [Hashable α] : HasSubset (Std.ExtHashSet α) where
+  Subset a b := ∀ x, x ∈ a → x ∈ b
+
+@[refl]
+theorem Std.ExtHashSet.subset_refl [DecidableEq α] [Hashable α]
+  (s : Std.ExtHashSet α) : s ⊆ s := fun _ h => h
+
+@[simp]
+theorem Std.ExtHashSet.inter_subset_left [DecidableEq α] [Hashable α]
+    {s t : Std.ExtHashSet α} : s ∩ t ⊆ s :=
+  fun _ => And.left ∘ mem_inter_iff.mp
+
+@[simp]
+theorem Std.ExtHashSet.inter_subset_right [DecidableEq α] [Hashable α]
+    {s t : Std.ExtHashSet α} : s ∩ t ⊆ t :=
+  fun _ => And.right ∘ mem_inter_iff.mp
+
+@[simp]
+theorem Std.ExtHashSet.subset_inter_iff [DecidableEq α] [Hashable α]
+    {s t r : Std.ExtHashSet α} : r ⊆ s ∩ t ↔ r ⊆ s ∧ r ⊆ t :=
+  (forall_congr' fun x => by rw [mem_inter_iff]; exact imp_and).trans forall_and
+  -- (forall_congr' fun _ => imp_and).trans forall_and
+
+@[gcongr]
+theorem Std.ExtHashSet.insert_subset_insert [DecidableEq α] [Hashable α]
+  {s t : Std.ExtHashSet α} (h₁ : s ⊆ t) : Insert.insert a s ⊆ Insert.insert a t :=
+    fun x h₂ => by
+      simp only [insert_eq_insert, mem_insert, beq_iff_eq] at ⊢ h₂
+      exact Or.imp_right (h₁ x) h₂

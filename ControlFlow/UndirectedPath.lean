@@ -203,7 +203,6 @@ theorem add_edge_self_makes_cycle [DecidableEq α] {g : Graph α}
   apply Iff.intro <;> (
     intro upath
     have path := upath.path
-    simp [Path.add_undirected_edge_flip_iff] at path
     exact Undirected.mk path upath.undirected upath.pathlist_start
   )
 

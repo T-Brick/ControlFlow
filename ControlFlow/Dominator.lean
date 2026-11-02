@@ -128,16 +128,15 @@ nonrec theorem Strict.trans [DecidableEq α]
   exact ⟨d₃, fun eq => by
     cases d₃.reach
     case refl =>
-      simp [eq] at *
-      have eq' := Dom.antisymm d₁.toDom d₂.toDom
-      simp [eq'] at d₁
+      rw [eq] at d₁ d₃
+      rw [Dom.antisymm d₁.toDom d₂.toDom] at d₁
       exact Strict.not_refl d₁
     case path ps₃ path₃ =>
       have split := Path.split (d₂.in_path ps₃ path₃)
         (Iff.subst Subtype.mk_eq_mk d₂.differ) path₃
       apply Exists.elim split; intro ps₁ split'
       apply Exists.elim split'; intro ps₂ h
-      simp [eq] at *
+      simp only [eq] at *
       apply List.disjoint_left.mp h.left (d₁.in_path ps₁ h.right.right.left)
       exact Path.finish_in_pathlist h.right.right.right
   ⟩
@@ -158,15 +157,13 @@ theorem total {g : Graph α} {e : Vertices g} {v₁ v₂ v₃ : Vertices g}
 theorem dom_iff_sdom_not_sdom [DecidableEq α]
     {g : Graph α} {e v₁ v₂ : Vertices g}
     : g(e) |= v₁ ≫ v₂ ↔ g(e) |= v₁ ≫= v₂ ∧ ¬g(e) |= v₂ ≫= v₁ := by
-  apply Iff.intro
-  . intro d₁
-    apply And.intro (d₁.toDom)
-    intro d₂
-    exact d₁.differ (antisymm d₁.toDom d₂ |> Eq.symm)
-  . intro h₁
-    apply Strict.mk h₁.left
-    intro h₂
-    simp [h₂] at h₁
+  exact ⟨
+    fun d₁ => ⟨d₁.toDom, fun d₂ => d₁.differ (antisymm d₁.toDom d₂ |> Eq.symm)⟩,
+    fun h₁ => by
+      apply Strict.mk h₁.left
+      intro h₂
+      simp only [h₂, and_not_self] at h₁
+  ⟩
 
 instance {cfg : CFG α Graph} : LE (Vertices cfg.digraph) := ⟨Dom.ofCFG cfg⟩
 instance {cfg : CFG α Graph} : LT (Vertices cfg.digraph) := ⟨Dom.Strict.ofCFG cfg⟩
@@ -190,34 +187,33 @@ class Algorithm [Digraph α Graph] where
 
 namespace Algorithm
 
-def Dom (α : Type) := Option (Set α)
+set_option linter.dupNamespace false
+def Dom (α : Type) [DecidableEq α] [Hashable α] := Option (Std.ExtHashSet α)
 
-instance [DecidableEq (Set α)] : DecidableEq (Dom α) :=
+instance [DecidableEq α] [Hashable α] [DecidableEq (Std.ExtHashSet α)] : DecidableEq (Dom α) :=
   fun a b => by
     cases a <;> cases b
     case none.none => exact .isTrue rfl
     case none.some bv => exact .isFalse (by simp only [reduceCtorEq, not_false_eq_true])
     case some.none av => exact .isFalse (by simp only [reduceCtorEq, not_false_eq_true])
     case some.some av bv =>
-      simp only [Option.some_inj (a := av)]
-      exact decEq av bv
+      exact decEq (Option.some av) (Option.some bv)
 
-
-inductive Dom.LE : Dom α → Dom α → Prop where
+inductive Dom.LE [DecidableEq α] [Hashable α] : Dom α → Dom α → Prop where
 | refl : Dom.LE x x
 | bot : Dom.LE .none x
 | subset : y ⊆ x → Dom.LE (.some x) (.some y)
 
-instance : Top (Dom α) where
+instance [DecidableEq α] [Hashable α] : Top (Dom α) where
   top := .some ∅
-instance : Bot (Dom α) where
+instance [DecidableEq α] [Hashable α] : Bot (Dom α) where
   bot := .none
 
 @[refl]
-theorem Dom.LE.reflexive (a : Dom α) : Dom.LE a a := .refl
+theorem Dom.LE.reflexive [DecidableEq α] [Hashable α] (a : Dom α) : Dom.LE a a := .refl
 
 @[trans]
-theorem Dom.LE.trans (h₁ : Dom.LE a b) (h₂ : Dom.LE b c) : Dom.LE a c := by
+theorem Dom.LE.trans [DecidableEq α] [Hashable α] {a b c: Dom α} (h₁ : Dom.LE a b) (h₂ : Dom.LE b c) : Dom.LE a c := by
   cases h₁
   case refl => exact h₂
   case bot => exact .bot
@@ -226,20 +222,23 @@ theorem Dom.LE.trans (h₁ : Dom.LE a b) (h₂ : Dom.LE b c) : Dom.LE a c := by
     case refl => exact .subset h₃
     case subset z h₄ => exact Dom.LE.subset (Set.Subset.trans h₄ h₃)
 
-theorem Dom.LE.antisymm (h₁ : Dom.LE a b) (h₂ : Dom.LE b a) : a = b := by
+theorem Dom.LE.antisymm [DecidableEq α] [Hashable α] {a b : Dom α} (h₁ : Dom.LE a b) (h₂ : Dom.LE b a) : a = b := by
   cases h₁
   case refl => rfl
   case bot => cases h₂ <;> rfl
   case subset x y h₁ =>
     cases h₂
     case refl => rfl
-    case subset h₂ => exact Option.some_inj.mpr (Set.Subset.antisymm h₂ h₁)
+    case subset h₂ =>
+      apply Option.some_inj.mpr
+      ext z
+      exact ⟨h₂ z, h₁ z⟩
 
 /-
  - Defined as set intersection lifted into an option, where `none` is the
  - bottom, i.e. an identity for `join`
  -/
-def Dom.join (l r : Dom α) : Dom α :=
+def Dom.join [DecidableEq α] [Hashable α] (l r : Dom α) : Dom α :=
   match l with
   | .none => r
   | .some lv =>
@@ -247,23 +246,23 @@ def Dom.join (l r : Dom α) : Dom α :=
     | .none => l
     | .some rv => .some (lv ∩ rv)
 
-theorem Dom.LE.join_left (x y : Dom α) : Dom.LE x (x.join y) := by
+theorem Dom.LE.join_left [DecidableEq α] [Hashable α] (x y : Dom α) : Dom.LE x (x.join y) := by
   cases x
   case none => exact .bot
   case some xv =>
     cases y
     case none => exact .refl
-    case some yv => exact Dom.LE.subset Set.inter_subset_left
+    case some yv => exact Dom.LE.subset Std.ExtHashSet.inter_subset_left
 
-theorem Dom.LE.join_right (x y : Dom α) : Dom.LE y (x.join y) := by
+theorem Dom.LE.join_right [DecidableEq α] [Hashable α] (x y : Dom α) : Dom.LE y (x.join y) := by
   cases x
   case none => exact .refl
   case some xv =>
     cases y
     case none => exact .bot
-    case some yv => exact Dom.LE.subset Set.inter_subset_right
+    case some yv => exact Dom.LE.subset Std.ExtHashSet.inter_subset_right
 
-theorem Dom.LE.join_lub
+theorem Dom.LE.join_lub [DecidableEq α] [Hashable α] {x y z : Dom α}
     (h₁ : Dom.LE x z)
     (h₂ : Dom.LE y z)
     : Dom.LE (x.join y) z := by
@@ -277,7 +276,7 @@ theorem Dom.LE.join_lub
       case none => cases h₁
       case some zv =>
         apply Dom.LE.subset
-        apply Set.subset_inter_iff.mpr
+        apply Std.ExtHashSet.subset_inter_iff.mpr
         apply And.intro
         . cases h₁
           . rfl
@@ -286,7 +285,7 @@ theorem Dom.LE.join_lub
           . rfl
           . assumption
 
-instance : Lattice (Dom α) where
+instance [DecidableEq α] [Hashable α] : Lattice (Dom α) where
   sup := Dom.join
   le := Dom.LE
   le_refl := Dom.LE.reflexive
@@ -300,25 +299,49 @@ instance : Lattice (Dom α) where
   inf_le_right := sorry
   le_inf := sorry
 
-def Dom.flow (v : α) (input : Dom α) : Dom α :=
+def Dom.flow [DecidableEq α] [Hashable α] (v : α) (input : Dom α) : Dom α :=
   match input with
   | .none => .none
   | .some input => .some (input.insert v)
 
-theorem Dom.flow_monotonic (v : α) : Monotone (Dom.flow v) := by
+theorem Dom.flow_monotonic [DecidableEq α] [Hashable α] (v : α) : Monotone (Dom.flow v) := by
   intro a b h₁
   rw [flow.eq_def, flow.eq_def]
-  cases a <;> cases b <;> simp
+  cases a <;> cases b <;> simp only
+  case none.none => exact h₁
   case none.some bv => exact .bot
   case some.none av => contradiction
   case some.some av bv =>
     apply Dom.LE.subset
     cases h₁
-    case a.refl => rfl
-    case a.subset h₁ => exact Set.insert_subset_insert h₁
+    case refl => rfl
+    case subset h₁ => exact Std.ExtHashSet.insert_subset_insert h₁
 
-def compute [DecidableEq α] [DecidableEq (Set α)] (cfg : CFG α Graph) : Unit :=
-  let res := Dataflow.kildall cfg Dom.flow ⊤ .forward .may Dom.flow_monotonic
-  sorry
+structure Result (α : Type) [DecidableEq α] [Hashable α] where
+  dom : α → Std.ExtHashSet α
+  sdom : α → Std.ExtHashSet α
+
+def compute [DecidableEq α] [Hashable α] [DecidableEq (Set α)] (cfg : CFG α Graph)
+    : Option (Result α) := do
+  let res ← Dataflow.kildall cfg Dom.flow ⊤ .forward .may Dom.flow_monotonic
+  /- The result of the dataflow analysis gives us a function which when given
+      a node 'v' returns the set of nodes that dominate 'v'. Instead, we want
+      to give a node 'v' and return when node 'v' dominates.
+  -/
+  let vertices := Digraph.toVertices cfg.digraph
+
+  let sdom_init : α → Std.ExtHashSet α := fun _ => {}
+  let dom_init : α → Std.ExtHashSet α := fun _ => {}
+  return vertices.foldl (fun ⟨sdom, dom⟩ v =>
+    let dom_set := vertices.foldl (fun dom_set u =>
+      match res.output u with
+      | .none => {}
+      | .some u_dom_set => if v ∈ u_dom_set then dom_set.insert u else dom_set
+    ) ({} : Std.ExtHashSet α)
+    let sdom_set := dom_set.filter (fun u => u ≠ v)
+
+    ⟨ fun u => if u = v then sdom_set else sdom u
+    , fun u => if u = v then dom_set else dom u ⟩
+  ) ⟨sdom_init, dom_init⟩
 
 end Algorithm

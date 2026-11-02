@@ -25,7 +25,7 @@ theorem trivial (w : α)
   simp [*]
   exact .refl
 
-def add_edge {g : Graph α} (connected : Connected g) (e : Edge α)
+theorem add_edge {g : Graph α} (connected : Connected g) (e : Edge α)
     (h₁ : has_vertex g e.start)
     (h₂ : has_vertex g e.finish)
     : Connected (Digraph.add_undirected_edge g e) := by
@@ -44,7 +44,7 @@ theorem add_edge_flip_iff {g : Graph α} {e : Edge α}
   . exact Path.Reachable.add_undirected_edge_flip_iff u v e h₁ h₁ h₂ h₂
       |>.mpr (h u v h₁ h₂)
 
-def add_vertex_start [DecidableEq α]
+theorem add_vertex_start [DecidableEq α]
     {g : Graph α}
     (connected : Connected g)
     (e : Edge α)
@@ -79,14 +79,14 @@ def add_vertex_start [DecidableEq α]
     exact connected u v (is_in' u eq_uf u_in) (is_in' v eq_vf v_in)
        |> Path.Reachable.add_undirected_edge_pres e
 
-def add_vertex_finish [DecidableEq α] {g : Graph α}
+theorem add_vertex_finish [DecidableEq α] {g : Graph α}
     (connected : Connected g)
     (e : Edge α)
     (h₁ : has_vertex g e.finish)
     : Connected (Digraph.add_undirected_edge g e) :=
   add_vertex_start connected e.flip h₁ |> add_edge_flip_iff.mp
 
-def merge [DecidableEq α] {g₁ g₂ : Graph α} {w : α}
+theorem merge [DecidableEq α] {g₁ g₂ : Graph α} {w : α}
     (connected₁ : Connected g₁)
     (connected₂ : Connected g₂)
     (shared : has_vertex g₁ w ∧ has_vertex g₂ w)
@@ -111,7 +111,7 @@ def merge [DecidableEq α] {g₁ g₂ : Graph α} {w : α}
       |> Reachable.graph_merge_left g₂ _ _
     exact Reachable.trans uw_reach wv_reach
 
-def merge_disjoint [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
+theorem merge_disjoint [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
     (u_in_g₁ : has_vertex g₁ u)
     (v_in_g₂ : has_vertex g₂ v)
     (disjoint_left : ∀ w, has_vertex g₁ w → ¬has_vertex g₂ w)
@@ -124,7 +124,7 @@ def merge_disjoint [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
   exact Reachable.graph_merge_disjoint u_in_g₁ v_in_g₂
     disjoint_left disjoint_right this
 
-def merge_add_edge [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
+theorem merge_add_edge [DecidableEq α] {g₁ g₂ : Graph α} {u v : α}
     (connected₁ : Connected g₁)
     (connected₂ : Connected g₂)
     (u_in_g₁ : has_vertex g₁ u)

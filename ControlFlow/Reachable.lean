@@ -37,7 +37,7 @@ instance [DecidableEq α] {g : Graph α} : Preorder (Reachable.Vertices g) where
   le_refl u := .refl
   le_trans u v w := Reachable.trans
 
-def edge {g : Graph α} {u v : Vertices g} (uv_in : ⟨u.val, v.val⟩ ∈ g)
+theorem edge {g : Graph α} {u v : Vertices g} (uv_in : ⟨u.val, v.val⟩ ∈ g)
     : Reachable g u v := .path [v.val] (Path.edge uv_in)
 
 def edge' {g : Graph α} {e : Edge α} (e_in : e ∈ g)

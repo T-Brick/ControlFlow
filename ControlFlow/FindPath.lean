@@ -41,7 +41,7 @@ structure Frontier (g : Graph α) (visited : List (Visited g s)) (skip : α → 
   cur_not_skip : ¬skip cur
 deriving DecidableEq
 
-@[simp] theorem Frontier.path_not_skip
+theorem Frontier.path_not_skip
     {g : Graph α}
     {visited : List (Visited g s)}
     (f : Frontier g visited skip s)
@@ -195,7 +195,7 @@ private def get_succ_frontier [DecidableEq α]
       → u ∈ Frontier.toList frontier := by
     intro u h₁ h₂
     have := frontier_nodes_filter_pres' u h₁ h₂
-    simp only [Frontier.toList, List.mapMember, Visited.toList, List.map_map,
+    simp only [Frontier.toList, List.mapMember, List.map_map,
       List.mem_map, List.mem_attach, Function.comp_apply, true_and,
       Subtype.exists, exists_prop, exists_eq_right, frontier_nodes_filtered,
       frontier] at this ⊢
