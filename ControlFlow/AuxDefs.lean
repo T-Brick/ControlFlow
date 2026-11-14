@@ -211,3 +211,10 @@ theorem Std.ExtHashSet.insert_subset_insert [DecidableEq α] [Hashable α]
     fun x h₂ => by
       simp only [insert_eq_insert, mem_insert, beq_iff_eq] at ⊢ h₂
       exact Or.imp_right (h₁ x) h₂
+
+def Std.HashSet.toString [DecidableEq α] [Hashable α] [ToString α]
+    (s : Std.HashSet α) : String :=
+  s!"\{{s.fold (fun acc v => s!"{acc}, {v}") ""}}"
+instance [DecidableEq α] [Hashable α] [ToString α]
+    : ToString (Std.HashSet α) :=
+  ⟨Std.HashSet.toString⟩

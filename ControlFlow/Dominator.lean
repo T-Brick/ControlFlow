@@ -318,8 +318,8 @@ theorem Dom.flow_monotonic [DecidableEq α] [Hashable α] (v : α) : Monotone (D
     case subset h₁ => exact Std.ExtHashSet.insert_subset_insert h₁
 
 structure Result (α : Type) [DecidableEq α] [Hashable α] where
-  dom : α → Std.ExtHashSet α
-  sdom : α → Std.ExtHashSet α
+  dom : α → Std.HashSet α
+  sdom : α → Std.HashSet α
 
 def compute [DecidableEq α] [Hashable α] (cfg : CFG α Graph)
     : Option (Result α) := do
@@ -330,18 +330,23 @@ def compute [DecidableEq α] [Hashable α] (cfg : CFG α Graph)
   -/
   let vertices := Digraph.toVertices cfg.digraph
 
-  let sdom_init : α → Std.ExtHashSet α := fun _ => {}
-  let dom_init : α → Std.ExtHashSet α := fun _ => {}
+  let sdom_init : α → Std.HashSet α := fun _ => {}
+  let dom_init : α → Std.HashSet α := fun _ => {}
   return vertices.foldl (fun ⟨sdom, dom⟩ v =>
     let dom_set := vertices.foldl (fun dom_set u =>
       match res.output u with
       | .none => {}
       | .some u_dom_set => if v ∈ u_dom_set then dom_set.insert u else dom_set
-    ) ({} : Std.ExtHashSet α)
+    ) ({} : Std.HashSet α)
     let sdom_set := dom_set.filter (fun u => u ≠ v)
 
     ⟨ fun u => if u = v then sdom_set else sdom u
     , fun u => if u = v then dom_set else dom u ⟩
   ) ⟨sdom_init, dom_init⟩
+
+def Result.toString [DecidableEq α] [Hashable α] [ToString α]
+    (cfg : CFG α Graph) (res : Result α) : String :=
+  let vertices := Digraph.toVertices cfg.digraph
+  vertices.map (fun v => s!"{v} dominates {res.dom v}") |>.toString
 
 end Algorithm
