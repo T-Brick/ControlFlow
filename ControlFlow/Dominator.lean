@@ -321,7 +321,7 @@ structure Result (α : Type) [DecidableEq α] [Hashable α] where
   dom : α → Std.ExtHashSet α
   sdom : α → Std.ExtHashSet α
 
-def compute [DecidableEq α] [Hashable α] [DecidableEq (Set α)] (cfg : CFG α Graph)
+def compute [DecidableEq α] [Hashable α] (cfg : CFG α Graph)
     : Option (Result α) := do
   let res ← Dataflow.kildall cfg Dom.flow ⊤ .forward .may Dom.flow_monotonic
   /- The result of the dataflow analysis gives us a function which when given
