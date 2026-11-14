@@ -9,7 +9,7 @@ lean_lib ControlFlow {
   -- add library configuration options here
 }
 
--- @[defaultTarget]
+@[default_target]
 lean_exe controlflow {
   root := `Main
 }

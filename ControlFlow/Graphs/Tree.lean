@@ -2,6 +2,7 @@ import ControlFlow.Reachable
 import ControlFlow.Connected
 import ControlFlow.Graphs.DAG
 import ControlFlow.UndirectedCycle
+import ControlFlow.Graphs.UndirectedGraph
 
 import Mathlib.Data.Tree.Basic
 
@@ -16,8 +17,8 @@ structure Tree (g : Graph α) : Prop where
   acyclic    : UndirectedGraph.Acyclic undirected
 
 structure Tree.Poly {g : Graph α} (dag : DAG g) where
-  undirected   := Digraph.undirect g
-  undirected_g := undirected.fst
+  undirected := Digraph.undirect g
+  undirected_g : Graph α := undirected.fst
   undirected_prop : UndirectedGraph undirected_g := by simp
   tree : Tree undirected_g
 

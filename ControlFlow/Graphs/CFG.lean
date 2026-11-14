@@ -138,94 +138,70 @@ where work (state : State α β) : Option (Result α β) :=
     let new_n_output := flow n (state.input n)
     let new_output := fun v => if v = n then new_n_output else state.output v
 
-    let next_nodes := state.next n
-    let new_input := fun m =>
-      let m_input := state.input m
-      if m ∈ next_nodes then
-        if combine.is_may
-        then m_input ⊔ new_n_output
-        else m_input ⊓ new_n_output
-      else m_input
-      
-    have old_le_new_input : ∀ m, state.input m ≤ new_input m := by
-      intro m
-      simp [new_input]
-      if m_in_next : m ∈ next_nodes then
-        simp [m_in_next, new_n_output]
-        if h₁ : combine.is_may then
-          simp only [h₁, ↓reduceIte, le_sup_left]
-        else
-          simp [h₁]
-          have := flow_monotonic n
-          have invariant := state.invariant
-
-          sorry
-      else simp [m_in_next]
-
-    let nextState :=
+    let nextState : State α β :=
       { flow := state.flow
       , next := state.next
-      , input := new_input
+      , input := state.input
       , output := new_output
-      , worklist := ns ∪ next_nodes
+      , worklist := ns
       , invariant := by
-          intro m
-          have old_invariant := state.invariant m
-          simp [hworklist] at old_invariant
-          if m_in_ns : m ∈ ns then simp [m_in_ns] else
-          simp [m_in_ns] at old_invariant ⊢
-          if m_in_next : m ∈ next_nodes then exact .inl m_in_next else
-          simp [m_in_next, new_input, next_nodes]
-          intro s s_in_next
+          -- intro m
+          -- have old_invariant := state.invariant m
+          -- simp [hworklist] at old_invariant
+          -- if m_in_ns : m ∈ ns then simp [m_in_ns] else
+          -- simp [m_in_ns] at old_invariant ⊢
+          -- if m_in_next : m ∈ next_nodes then exact .inl m_in_next else
+          -- simp [m_in_next, new_input, next_nodes]
+          -- intro s s_in_next
           -- simp [new_input]
           sorry
       }
-    -- let nextState := (state.next n).foldl (init := initState)
-    --   (fun state m =>
-    --     have invariant := state.invariant
+    let nextState := (state.next n).foldl (init := nextState)
+      (fun state m =>
+        have invariant := state.invariant
 
-    --     let m_input := state.input m
-    --     let new_m_input :=
-    --       if combine.is_may
-    --       then m_input ⊔ new_n_output
-    --       else m_input ⊓ new_n_output
+        let m_input := state.input m
+        let new_m_input :=
+          if combine.is_may
+          then m_input ⊔ new_n_output
+          else m_input ⊓ new_n_output
 
-    --     have m_le_new_m : m_input ≤ new_m_input := by
-    --       if h₁ : combine.is_may then simp [new_m_input, h₁]
-    --       else
-    --         simp [new_m_input, h₁, new_n_output, m_input]
-    --         sorry
+        -- have m_le_new_m : m_input ≤ new_m_input := by
+          -- if h₁ : combine.is_may then simp [new_m_input, h₁]
+          -- else
+            -- simp [new_m_input, h₁, new_n_output, m_input]
+            -- sorry
 
-    --     let new_worklist :=
-    --       if state.worklist.elem m
-    --       then state.worklist
-    --       else m::state.worklist
+        let new_worklist :=
+          if state.worklist.elem m
+          then state.worklist
+          else m::state.worklist
 
-    --     if m_input ≠ new_m_input then
-    --       { flow := state.flow
-    --       , next := state.next
-    --       , input := fun v => if v = m then new_m_input else state.input v
-    --       , output := state.output
-    --       , worklist := new_worklist
-    --       , invariant := by
-    --           intro v
-    --           simp [new_worklist, new_m_input]
-    --           have := invariant v
-    --           if m_in : m ∈ state.worklist then
-    --             simp [m_in]
-    --             if v_eq_m : v = m then
-    --               simp [v_eq_m]
-    --               sorry
-    --             else
-    --               simp [v_eq_m]
-    --               sorry
-    --           else
-    --             simp [m_in]
-    --             if v_eq_m : v = m then exact .inl (.inl v_eq_m)
-    --             else
-    --               simp [v_eq_m]
-    --               sorry
-    --       }
-    --     else state
-    --   )
+        if m_input ≠ new_m_input then
+          { flow := state.flow
+          , next := state.next
+          , input := fun v => if v = m then new_m_input else state.input v
+          , output := state.output
+          , worklist := new_worklist
+          , invariant := by
+              intro v
+              simp [new_worklist, new_m_input]
+              have := invariant v
+              if m_in : m ∈ state.worklist then
+                simp [m_in]
+                if v_eq_m : v = m then
+                  simp [v_eq_m]
+                  sorry
+                else
+                  simp [v_eq_m]
+                  sorry
+              else
+                simp [m_in]
+                if v_eq_m : v = m then exact .inl (.inl v_eq_m)
+                else
+                  simp [v_eq_m]
+                  sorry
+          }
+        else state
+      )
     work nextState

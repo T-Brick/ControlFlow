@@ -318,8 +318,8 @@ theorem Dom.flow_monotonic [DecidableEq α] [Hashable α] (v : α) : Monotone (D
     case subset h₁ => exact Std.ExtHashSet.insert_subset_insert h₁
 
 structure Result (α : Type) [DecidableEq α] [Hashable α] where
-  dom : α → Std.HashSet α
   sdom : α → Std.HashSet α
+  dom : α → Std.HashSet α
 
 def compute [DecidableEq α] [Hashable α] (cfg : CFG α Graph)
     : Option (Result α) := do
@@ -346,7 +346,10 @@ def compute [DecidableEq α] [Hashable α] (cfg : CFG α Graph)
 
 def Result.toString [DecidableEq α] [Hashable α] [ToString α]
     (cfg : CFG α Graph) (res : Result α) : String :=
-  let vertices := Digraph.toVertices cfg.digraph
-  vertices.map (fun v => s!"{v} dominates {res.dom v}") |>.toString
+  let domString :=
+    Digraph.verticesToString
+      (Digraph.toVertices cfg.digraph)
+      (fun v => res.sdom v |>.toList)
+  s!"Strict Dominator Table:\n{domString}"
 
 end Algorithm
