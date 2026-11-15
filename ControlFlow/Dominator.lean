@@ -24,6 +24,17 @@ structure Dom.Immediate (g : Graph α) (e v w : Vertices g) : Prop
     extends Dom.Strict g e v w where
   others : ∀ u, Dom.Strict g e u w → Dom.Strict g e u v
 
+/- A node v₂ is in the dominance frontier of v₁ if
+    - v₁ does not sdom v₂
+    - there is some predecessor of v₂ that v₁ does dominate
+  Thus, v₂ can be thought of a the point where multiple control flow paths
+  merge back together
+-/
+structure Dom.Frontier (g : Graph α) (e v₁ v₂ : Vertices g) : Prop where
+  not_sdom : ¬Dom.Strict g e v₁ v₂
+  dom_pred : ∃ (v₃ : Vertices g), v₃.val ∈ Digraph.pred g v₂.val
+                                ∧ Dom g e v₁ v₃
+
 -- maybe make cursed notation local
 notation:50 g:51 "(" e:51 ")" " |= " v₁:51 " ≫= " v₂:51 => Dom g e v₁ v₂
 notation:50 g:51 "(" e:51 ")" " |= " v₁:51 " ≫ " v₂:51  => Dom.Strict g e v₁ v₂
@@ -320,29 +331,81 @@ theorem Dom.flow_monotonic [DecidableEq α] [Hashable α] (v : α) : Monotone (D
 structure Result (α : Type) [DecidableEq α] [Hashable α] where
   sdom : α → Std.HashSet α
   dom : α → Std.HashSet α
+  sdom_by : α → Std.HashSet α
 
 def compute [DecidableEq α] [Hashable α] (cfg : CFG α Graph)
     : Option (Result α) := do
   let res ← Dataflow.kildall cfg Dom.flow ⊤ .forward .may Dom.flow_monotonic
   /- The result of the dataflow analysis gives us a function which when given
       a node 'v' returns the set of nodes that dominate 'v'. Instead, we want
-      to give a node 'v' and return when node 'v' dominates.
+      to give a node 'v' and return what node 'v' dominates.
   -/
   let vertices := Digraph.toVertices cfg.digraph
 
   let sdom_init : α → Std.HashSet α := fun _ => {}
   let dom_init : α → Std.HashSet α := fun _ => {}
-  return vertices.foldl (fun ⟨sdom, dom⟩ v =>
+  let sdom_by_init : α → Std.HashSet α := fun _ => {}
+  return vertices.foldl (fun ⟨sdom, dom, sdom_by⟩ v =>
     let dom_set := vertices.foldl (fun dom_set u =>
       match res.output u with
       | .none => {}
       | .some u_dom_set => if v ∈ u_dom_set then dom_set.insert u else dom_set
     ) ({} : Std.HashSet α)
     let sdom_set := dom_set.filter (fun u => u ≠ v)
+    let sdom_by_set :=
+      match res.output v with
+      | .none => {}
+      | .some v_dom_by =>
+        vertices.foldl (fun sdom_by_set u =>
+          if u ∈ v_dom_by && u ≠ v then sdom_by_set.insert u else sdom_by_set
+        ) ({} : Std.HashSet α)
 
     ⟨ fun u => if u = v then sdom_set else sdom u
-    , fun u => if u = v then dom_set else dom u ⟩
-  ) ⟨sdom_init, dom_init⟩
+    , fun u => if u = v then dom_set else dom u
+    , fun u => if u = v then sdom_by_set else sdom_by u⟩
+  ) ⟨sdom_init, dom_init, sdom_by_init⟩
+
+-- todo rewrite to be more efficient?
+def get_immediate_dominator [DecidableEq α] [Hashable α]
+    (res : Result α) : α → Option α :=
+  let ⟨sdom, _, sdom_by⟩ := res
+  fun v =>
+    let domed_by := sdom_by v
+    let candidateDoms := domed_by.toList.map (fun u => (u, sdom u))
+      |>.filter (fun (_, u_sdom_set) => domed_by.inter u_sdom_set == {})
+    match candidateDoms with
+    | .nil => .none
+    | (u, _) :: _ => .some u
+
+-- todo optimize?
+def get_dominance_frontier [DecidableEq α] [Hashable α]
+    (cfg : CFG α Graph)
+    (idom : α → Option α)
+    : Option (α → Std.HashSet α) :=
+  let vertices := Digraph.toVertices cfg.digraph
+  let fuel := vertices.length
+  let init_frontier : α → Std.HashSet α := fun _ => {}
+  vertices.foldlM (fun frontier v =>
+    let pred := Digraph.pred cfg.digraph v
+    let idom_v? := idom v
+    match idom_v? with
+    | .none => frontier
+    | .some idom_v =>
+      pred.foldlM (work fuel v idom_v) frontier
+  ) init_frontier
+where work
+    (fuel : Nat)
+    (v idom_v : α)
+    (frontier : α → Std.HashSet α)
+    (runner : α)
+    : Option (α → Std.HashSet α) :=
+  if fuel = 0 then .none else
+  if runner = idom_v then .some frontier else
+  let new_frontier := fun u =>
+    if u = runner then frontier u |>.insert v else frontier u
+  match idom runner with
+  | .none => .none
+  | .some new_runner => work (fuel - 1) v idom_v new_frontier new_runner
 
 def Result.toString [DecidableEq α] [Hashable α] [ToString α]
     (cfg : CFG α Graph) (res : Result α) : String :=

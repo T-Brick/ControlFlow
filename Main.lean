@@ -10,7 +10,14 @@ def validateDominator (cfg : CFG Nat Digraph.FuncGraphType)
   | .none, .none => return
   | .none, .some _ => throw s!"Expected dominators to return none!"
   | .some results, .none => throw s!"Expected dominators to return ${results}"
-  | .some results, .some ⟨sdom, dom⟩ =>
+  | .some results, .some cresult =>
+    let ⟨sdom, dom, _⟩ := cresult
+    -- let idom := Dom.Algorithm.get_immediate_dominator cresult
+    -- let dom_frontier := Dom.Algorithm.get_dominance_frontier cfg idom |>.get!
+    -- let idomStr := Digraph.verticesToString
+    --   (Digraph.toVertices cfg.digraph)
+    --   (fun v => dom_frontier v |>.toList)
+    -- dbg_trace idomStr
     results.foldlM (fun _ (v, expectedSDom) => do
       if sdom v |>.beq (Std.HashSet.ofList expectedSDom) then
         if dom v |>.beq (Std.HashSet.ofList (v::expectedSDom)) then
