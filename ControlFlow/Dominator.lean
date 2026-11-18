@@ -381,30 +381,29 @@ def get_immediate_dominator [DecidableEq α] [Hashable α]
 def get_dominance_frontier [DecidableEq α] [Hashable α]
     (cfg : CFG α Graph)
     (idom : α → Option α)
-    : Option (α → Std.HashSet α) :=
+    : α → Std.HashSet α :=
   let vertices := Digraph.toVertices cfg.digraph
-  let fuel := vertices.length
+  let fuel := vertices.length + 1
   let init_frontier : α → Std.HashSet α := fun _ => {}
-  vertices.foldlM (fun frontier v =>
+  vertices.foldl (fun frontier v =>
     let pred := Digraph.pred cfg.digraph v
     let idom_v? := idom v
     match idom_v? with
     | .none => frontier
-    | .some idom_v =>
-      pred.foldlM (work fuel v idom_v) frontier
+    | .some idom_v => pred.foldl (work fuel v idom_v) frontier
   ) init_frontier
 where work
     (fuel : Nat)
     (v idom_v : α)
     (frontier : α → Std.HashSet α)
     (runner : α)
-    : Option (α → Std.HashSet α) :=
-  if fuel = 0 then .none else
-  if runner = idom_v then .some frontier else
+    : α → Std.HashSet α :=
+  if fuel = 0 then  /- unreachable -/ frontier else
+  if runner = idom_v then frontier else
   let new_frontier := fun u =>
     if u = runner then frontier u |>.insert v else frontier u
   match idom runner with
-  | .none => .none
+  | .none => frontier
   | .some new_runner => work (fuel - 1) v idom_v new_frontier new_runner
 
 def Result.toString [DecidableEq α] [Hashable α] [ToString α]
