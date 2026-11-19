@@ -345,10 +345,11 @@ def compute [DecidableEq α] [Hashable α] (cfg : CFG α Graph)
   let sdom_init : α → Std.HashSet α := fun _ => {}
   let dom_init : α → Std.HashSet α := fun _ => {}
   let sdom_by_init : α → Std.HashSet α := fun _ => {}
+
   return vertices.foldl (fun ⟨sdom, dom, sdom_by⟩ v =>
     let dom_set := vertices.foldl (fun dom_set u =>
       match res.output u with
-      | .none => {}
+      | .none => dom_set
       | .some u_dom_set => if v ∈ u_dom_set then dom_set.insert u else dom_set
     ) ({} : Std.HashSet α)
     let sdom_set := dom_set.filter (fun u => u ≠ v)
@@ -362,7 +363,7 @@ def compute [DecidableEq α] [Hashable α] (cfg : CFG α Graph)
 
     ⟨ fun u => if u = v then sdom_set else sdom u
     , fun u => if u = v then dom_set else dom u
-    , fun u => if u = v then sdom_by_set else sdom_by u⟩
+    , fun u => if u = v then sdom_by_set else sdom_by u ⟩
   ) ⟨sdom_init, dom_init, sdom_by_init⟩
 
 -- todo rewrite to be more efficient?
